@@ -19,6 +19,8 @@ import {
   Trash2
 } from 'lucide-react';
 
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100';
+
 const Dashboard = () => {
   const { user, logout } = useAuth();
 
@@ -565,7 +567,7 @@ const Dashboard = () => {
                     return (
                       <tr key={day.dateKey} className="bg-[#FFFF00] text-slate-900">
                         <td className="px-6 py-2.5 text-center border border-slate-200">{idx + 1}</td>
-                        <td className="px-6 py-2.5 border border-slate-200">{day.dateNum}-May</td>
+                        <td className="px-6 py-2.5 border border-slate-200">{day.dateNum}-{monthNames[currentMonth].slice(0, 3)}</td>
                         <td className="px-6 py-2.5 border border-slate-200">{day.dayOfWeek}</td>
                         <td className="px-6 py-2.5 text-center border border-slate-200">—</td>
                         <td className="px-6 py-2.5 text-center border border-slate-200">—</td>
@@ -581,7 +583,7 @@ const Dashboard = () => {
                   return (
                     <tr key={day.dateKey} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-slate-50 transition-colors`}>
                       <td className="px-6 py-2.5 text-center border border-slate-200">{idx + 1}</td>
-                      <td className="px-6 py-2.5 border border-slate-200 font-bold">{day.dateNum}-May</td>
+                      <td className="px-6 py-2.5 border border-slate-200 font-bold">{day.dateNum}-{monthNames[currentMonth].slice(0, 3)}</td>
                       <td className="px-6 py-2.5 border border-slate-200 font-bold">{day.dayOfWeek}</td>
                       <td className="px-6 py-2.5 text-center border border-slate-200 font-mono">{day.checkIn || '—'}</td>
                       <td className="px-6 py-2.5 text-center border border-slate-200 font-mono">{day.checkOut || '—'}</td>

@@ -54,7 +54,7 @@ export const exportSalarySheetToWord = (daysList = [], monthName, year, totalHou
       rowContent = `
         <tr style="background-color: #FFFF00; font-family: 'Arial', sans-serif; font-size: 11pt;">
           <td style="border: 1px solid #c0c0c0; padding: 6px; text-align: center;">${index + 1}</td>
-          <td style="border: 1px solid #c0c0c0; padding: 6px; color: #505050;">${day.dateNum}-May</td>
+          <td style="border: 1px solid #c0c0c0; padding: 6px; color: #505050;">${day.dateNum}-${monthName.slice(0, 3)}</td>
           <td style="border: 1px solid #c0c0c0; padding: 6px; color: #505050;">${day.dayOfWeek}</td>
           <td style="border: 1px solid #c0c0c0; padding: 6px; text-align: center; color: #808080;">—</td>
           <td style="border: 1px solid #c0c0c0; padding: 6px; text-align: center; color: #808080;">—</td>
@@ -76,7 +76,7 @@ export const exportSalarySheetToWord = (daysList = [], monthName, year, totalHou
       tableRows += `
         <tr style="font-family: 'Arial', sans-serif; font-size: 11pt;">
           <td style="border: 1px solid #c0c0c0; padding: 6px; text-align: center;">${index + 1}</td>
-          <td style="border: 1px solid #c0c0c0; padding: 6px; font-weight: bold;">${day.dateNum}-May</td>
+          <td style="border: 1px solid #c0c0c0; padding: 6px; font-weight: bold;">${day.dateNum}-${monthName.slice(0, 3)}</td>
           <td style="border: 1px solid #c0c0c0; padding: 6px; font-weight: bold;">${day.dayOfWeek}</td>
           <td style="border: 1px solid #c0c0c0; padding: 6px; text-align: center;">${inTime}</td>
           <td style="border: 1px solid #c0c0c0; padding: 6px; text-align: center;">${outTime}</td>
