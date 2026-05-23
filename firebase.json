@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "attendance-portal-it",
     "public": "dist",
     "ignore": [
       "firebase.json",
