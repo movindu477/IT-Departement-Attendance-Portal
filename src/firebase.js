@@ -5,14 +5,14 @@ import { getFirestore } from "firebase/firestore";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
+// Your web app's Firebase configuration load from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyDSXlF2drOKAd3hPl5hipeI0UsgJVTzYBc",
-  authDomain: "attendance-portal-it.firebaseapp.com",
-  projectId: "attendance-portal-it",
-  storageBucket: "attendance-portal-it.firebasestorage.app",
-  messagingSenderId: "1002132763732",
-  appId: "1:1002132763732:web:ea668f7a8f659768ee69c1"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
