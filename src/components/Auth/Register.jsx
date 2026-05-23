@@ -38,8 +38,8 @@ const Register = () => {
   };
 
   return (
-    <div className="h-full w-full flex flex-col items-center px-6 pb-36 justify-end text-slate-200">
-      <div className="w-full max-w-md">
+    <div className="h-full w-full flex flex-col items-center px-6 pb-20 justify-end text-slate-200">
+      <div className="w-full max-w-md animate-fade-in-up">
         <div className="mb-8">
           <h2 className="text-3xl font-light text-white tracking-tight">Register</h2>
           <p className="text-sm text-slate-400 mt-2 font-light">Create your account to start tracking your attendance and salary sheets.</p>

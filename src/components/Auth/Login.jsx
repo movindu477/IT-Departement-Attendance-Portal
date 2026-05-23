@@ -32,7 +32,7 @@ const Login = () => {
 
   return (
     <div className="h-full w-full flex flex-col items-center px-6 pb-36 justify-end text-slate-200">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md animate-fade-in-up">
         <div className="mb-8">
           <h2 className="text-3xl font-light text-white tracking-tight">Login</h2>
           <p className="text-sm text-slate-400 mt-2 font-light">Welcome back! Sign in to access your attendance portal.</p>
