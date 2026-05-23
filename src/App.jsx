@@ -39,7 +39,7 @@ function SplitLayoutWrapper() {
             />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
+            <h1 className="text-2xl font-light tracking-wide text-white">
               Attendance Portal
             </h1>
           </div>
@@ -50,7 +50,7 @@ function SplitLayoutWrapper() {
           <img 
             src={illustrationImg} 
             alt="Attendance Illustration" 
-            className="w-full max-w-[240px] h-auto object-contain opacity-90"
+            className="w-full max-w-[290px] h-auto object-contain opacity-90"
             draggable="false"
           />
         </div>

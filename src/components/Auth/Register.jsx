@@ -38,11 +38,12 @@ const Register = () => {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto py-12 px-6">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Register</h2>
-        <p className="text-sm text-slate-500 mt-2 font-light">Create your account to start tracking your attendance and salary sheets.</p>
-      </div>
+    <div className="h-full w-full flex flex-col items-center px-6 pb-20 justify-end">
+      <div className="w-full max-w-md">
+        <div className="mb-8">
+          <h2 className="text-3xl font-light text-slate-800 tracking-tight">Register</h2>
+          <p className="text-sm text-slate-500 mt-2 font-light">Create your account to start tracking your attendance and salary sheets.</p>
+        </div>
 
       {error && (
         <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-medium">
@@ -120,6 +121,7 @@ const Register = () => {
         <Link to="/login" className="font-semibold text-slate-900 hover:underline">
           Sign In
         </Link>
+      </div>
       </div>
     </div>
   );

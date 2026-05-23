@@ -31,11 +31,12 @@ const Login = () => {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto py-12 px-6">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Login</h2>
-        <p className="text-sm text-slate-500 mt-2 font-light">Welcome back! Sign in to access your attendance portal.</p>
-      </div>
+    <div className="h-full w-full flex flex-col items-center px-6 pb-20 justify-end">
+      <div className="w-full max-w-md">
+        <div className="mb-8">
+          <h2 className="text-3xl font-light text-slate-800 tracking-tight">Login</h2>
+          <p className="text-sm text-slate-500 mt-2 font-light">Welcome back! Sign in to access your attendance portal.</p>
+        </div>
 
       {error && (
         <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-medium">
@@ -92,6 +93,7 @@ const Login = () => {
         <Link to="/register" className="font-semibold text-slate-900 hover:underline">
           Register now
         </Link>
+      </div>
       </div>
     </div>
   );
