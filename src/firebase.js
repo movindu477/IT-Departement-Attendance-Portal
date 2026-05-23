@@ -2,8 +2,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration load from environment variables
 const firebaseConfig = {
@@ -15,11 +13,31 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app = null;
+let auth = null;
+let db = null;
+let configError = null;
 
-// Expose Auth and Firestore modules
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Basic validation check for configuration presence
+const isConfigMissing = 
+  !firebaseConfig.apiKey || 
+  firebaseConfig.apiKey === "undefined" || 
+  !firebaseConfig.projectId || 
+  firebaseConfig.projectId === "undefined";
 
+if (isConfigMissing) {
+  configError = new Error("Firebase Configuration variables are missing. Please configure your environment variables.");
+} else {
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } catch (error) {
+    console.error("Firebase initialization failed:", error);
+    configError = error;
+  }
+}
+
+export { app, auth, db, configError };
 export default app;
+

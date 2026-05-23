@@ -5,6 +5,8 @@ import PrivateRoute from './components/Auth/PrivateRoute';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import Dashboard from './components/Dashboard/Dashboard';
+import { configError } from './firebase';
+import SetupGuide from './components/SetupGuide';
 
 import backgroundImage from './assets/images/image1.jpg';
 
@@ -54,6 +56,10 @@ function SplitLayoutWrapper() {
 }
 
 function App() {
+  if (configError) {
+    return <SetupGuide error={configError} />;
+  }
+
   return (
     <AuthProvider>
       <Router>
