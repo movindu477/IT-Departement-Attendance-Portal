@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { exportSalarySheetToWord } from '../../utils/reportUtils';
+import { exportSalarySheetToExcel } from '../../utils/reportUtils';
 import {
   Clock,
   LogOut,
@@ -15,7 +15,8 @@ import {
   X,
   Save,
   CheckCircle2,
-  Trash2
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100';
@@ -41,6 +42,186 @@ const Dashboard = () => {
   const [outTime, setOutTime] = useState('');
   const [reason, setReason] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState('Present');
+  const [alert, setAlert] = useState(null); // { type: 'success' | 'error', message: string }
+
+  // Time parsing and formatting normalization function
+  const parseAndFormatTime = (inputStr, defaultVal = '08:30') => {
+    if (!inputStr) return defaultVal;
+    
+    let clean = inputStr.trim().toLowerCase();
+    
+    // Check for AM/PM
+    const isPM = clean.includes('pm');
+    const isAM = clean.includes('am');
+    
+    // Remove am/pm and non-numeric/non-separator characters
+    clean = clean.replace(/(am|pm)/g, '').trim();
+    
+    let hours = 0;
+    let minutes = 0;
+    
+    // Try matching standard and informal typing formats
+    const separatorMatch = clean.match(/^(\d{1,2})[\s\.:](\d{2})$/);
+    const singleMinMatch = clean.match(/^(\d{1,2})[\s\.:](\d{1})$/);
+    const pureDigitsMatch = clean.match(/^(\d{3,4})$/);
+    const pureHoursMatch = clean.match(/^(\d{1,2})$/);
+    
+    if (separatorMatch) {
+      hours = parseInt(separatorMatch[1], 10);
+      minutes = parseInt(separatorMatch[2], 10);
+    } else if (singleMinMatch) {
+      hours = parseInt(singleMinMatch[1], 10);
+      minutes = parseInt(singleMinMatch[2], 10) * 10;
+    } else if (pureDigitsMatch) {
+      const val = pureDigitsMatch[1];
+      if (val.length === 3) {
+        hours = parseInt(val.charAt(0), 10);
+        minutes = parseInt(val.slice(1), 10);
+      } else {
+        hours = parseInt(val.slice(0, 2), 10);
+        minutes = parseInt(val.slice(2), 10);
+      }
+    } else if (pureHoursMatch) {
+      hours = parseInt(pureHoursMatch[1], 10);
+      minutes = 0;
+    } else {
+      return defaultVal;
+    }
+    
+    if (isPM && hours < 12) {
+      hours += 12;
+    } else if (isAM && hours === 12) {
+      hours = 0;
+    }
+    
+    if (isNaN(hours) || hours < 0 || hours > 23) hours = 8;
+    if (isNaN(minutes) || minutes < 0 || minutes > 59) minutes = 0;
+    
+    const hStr = hours < 10 ? `0${hours}` : `${hours}`;
+    const mStr = minutes < 10 ? `0${minutes}` : `${minutes}`;
+    
+    return `${hStr}:${mStr}`;
+  };
+
+  const handleInBlur = () => {
+    setInTime(prev => parseAndFormatTime(prev, '08:30'));
+  };
+
+  const handleOutBlur = () => {
+    setOutTime(prev => parseAndFormatTime(prev, '17:30'));
+  };
+
+  // Helper to handle keyboard backspace / delete logic
+  const handleTimeKeyDown = (e, setter, value) => {
+    const start = e.target.selectionStart;
+    const end = e.target.selectionEnd;
+
+    if (e.key === 'Backspace') {
+      if (start !== end) return; // let default selection deletion work
+
+      const parts = value.split(':');
+      const h = parts[0] || '';
+      const m = parts[1] || '';
+
+      if (start > 2) {
+        // Cursor is in minutes section (e.g. index 3, 4, 5)
+        e.preventDefault();
+        if (m.length > 0) {
+          setter(h + ':');
+          setTimeout(() => {
+            e.target.setSelectionRange(3, 3);
+          }, 0);
+        } else {
+          setter(':');
+          setTimeout(() => {
+            e.target.setSelectionRange(0, 0);
+          }, 0);
+        }
+      } else {
+        // Cursor is in hours section (e.g. index 0, 1, 2)
+        e.preventDefault();
+        setter(':' + m);
+        setTimeout(() => {
+          e.target.setSelectionRange(0, 0);
+        }, 0);
+      }
+    } else if (e.key === 'Delete') {
+      if (start !== end) return;
+      if (start === 2) {
+        // Protect the colon at index 2
+        e.preventDefault();
+      }
+    }
+  };
+
+  // Helper to handle text typing and keep segments locked
+  const handleTimeInputChange = (e, setter) => {
+    const rawVal = e.target.value;
+    const cursor = e.target.selectionStart;
+
+    if (rawVal === '') {
+      setter(':');
+      setTimeout(() => {
+        e.target.setSelectionRange(0, 0);
+      }, 0);
+      return;
+    }
+
+    // Keep only numbers and colons
+    let clean = rawVal.replace(/[^\d:]/g, '');
+
+    // Ensure there is at least one colon
+    if (!clean.includes(':')) {
+      if (clean.length === 1) {
+        clean = clean + ':';
+      } else if (clean.length >= 2) {
+        clean = clean.slice(0, 2) + ':' + clean.slice(2);
+      }
+    }
+
+    // Split hours and minutes
+    const parts = clean.split(':');
+    let hours = parts[0] || '';
+    let minutes = parts[1] || '';
+
+    // Limit each segment to max 2 digits
+    hours = hours.slice(0, 2);
+    minutes = minutes.slice(0, 2);
+
+    const formatted = `${hours}:${minutes}`;
+    setter(formatted);
+
+    // Calculate correct cursor position
+    let newCursor = cursor;
+
+    // Cap cursor if it exceeds the formatted string length
+    if (newCursor > formatted.length) {
+      newCursor = formatted.length;
+    }
+
+    // If typing extra digits in hours (e.g. "129:34"), cap cursor at 2
+    if (parts[0].length > 2 && cursor === 3) {
+      newCursor = 2;
+    }
+
+    // If typing extra digits in minutes (e.g. "12:349"), cap cursor at 5
+    if (parts[1] && parts[1].length > 2 && cursor === 6) {
+      newCursor = 5;
+    }
+
+    setTimeout(() => {
+      e.target.setSelectionRange(newCursor, newCursor);
+    }, 0);
+  };
+
+  const handleInTimeChange = (e) => {
+    handleTimeInputChange(e, setInTime);
+  };
+
+  const handleOutTimeChange = (e) => {
+    handleTimeInputChange(e, setOutTime);
+  };
 
   // Month Names Array
   const monthNames = [
@@ -127,7 +308,7 @@ const Dashboard = () => {
         dateNum: d,
         dayOfWeek: dayOfWeekName,
         isWeekend,
-        status: isWeekend ? 'Weekend' : (matched ? 'Present' : 'Absent'),
+        status: isWeekend ? 'Weekend' : (matched ? matched.status || 'Present' : 'Absent'),
         checkIn: matched?.checkIn || '',
         checkOut: matched?.checkOut || '',
         hours: matched?.hours || '0.00',
@@ -146,8 +327,12 @@ const Dashboard = () => {
     if (!inStr || !outStr) return { hours: '0.00', salary: 0 };
     
     try {
-      const [inH, inM] = inStr.split(':').map(Number);
-      const [outH, outM] = outStr.split(':').map(Number);
+      // Parse/normalize input strings in real-time
+      const inNormalized = parseAndFormatTime(inStr, '08:30');
+      const outNormalized = parseAndFormatTime(outStr, '17:30');
+      
+      const [inH, inM] = inNormalized.split(':').map(Number);
+      const [outH, outM] = outNormalized.split(':').map(Number);
       
       let diffH = outH - inH;
       let diffM = outM - inM;
@@ -170,11 +355,21 @@ const Dashboard = () => {
     }
   };
 
+  // Auto-dismiss dashboard alerts
+  useEffect(() => {
+    if (alert) {
+      const timer = setTimeout(() => setAlert(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [alert]);
+
   // Selecting a day on the calendar
   const handleSelectDay = (day) => {
     setSelectedDay(day);
-    setInTime(day.checkIn || '');
-    setOutTime(day.checkOut || '');
+    const isDayOff = day.status === 'Day Off';
+    setStatus(isDayOff ? 'Day Off' : 'Present');
+    setInTime(isDayOff ? '' : (day.checkIn || '08:30'));
+    setOutTime(isDayOff ? '' : (day.checkOut || '17:30')); // default out is 17:30
     setReason(day.reason || '');
   };
 
@@ -184,19 +379,22 @@ const Dashboard = () => {
     if (!selectedDay) return;
     setIsSaving(true);
 
-    const { hours, salary } = calculateHoursAndSalary(inTime, outTime);
+    const isDayOff = status === 'Day Off';
+    const cleanIn = isDayOff ? '' : parseAndFormatTime(inTime, '08:30');
+    const cleanOut = isDayOff ? '' : parseAndFormatTime(outTime, '17:30');
+    const { hours, salary } = isDayOff ? { hours: '0.00', salary: 0 } : calculateHoursAndSalary(cleanIn, cleanOut);
     
     const docName = `${user.uid}_${selectedDay.dateKey}`;
     const payload = {
       userId: user.uid,
       date: selectedDay.dateKey,
       dayOfWeek: selectedDay.dayOfWeek,
-      checkIn: inTime,
-      checkOut: outTime,
+      checkIn: cleanIn,
+      checkOut: cleanOut,
       hours: hours,
       salary: salary,
       reason: reason,
-      status: 'Present',
+      status: status,
       updatedAt: new Date().toISOString()
     };
 
@@ -204,23 +402,40 @@ const Dashboard = () => {
       await setDoc(doc(db, 'attendance', docName), payload);
       setIsSaving(false);
       setSelectedDay(null);
+      setAlert({
+        type: 'success',
+        message: `Successfully saved log for ${selectedDay.dateNum} ${monthNames[currentMonth]}.`
+      });
     } catch (error) {
       console.error("Error writing document to Firestore:", error);
       setIsSaving(false);
+      setAlert({
+        type: 'error',
+        message: `Failed to save log: ${error.message || 'Permission denied or connection issue.'}`
+      });
     }
   };
 
   // Delete attendance document
   const handleDelete = async () => {
-    if (!selectedDay?.docId) return;
+    if (!selectedDay) return;
     setIsSaving(true);
+    const docId = selectedDay.docId || `${user.uid}_${selectedDay.dateKey}`;
     try {
-      await deleteDoc(doc(db, 'attendance', selectedDay.docId));
+      await deleteDoc(doc(db, 'attendance', docId));
       setIsSaving(false);
       setSelectedDay(null);
+      setAlert({
+        type: 'success',
+        message: `Successfully deleted log for ${selectedDay.dateNum} ${monthNames[currentMonth]}.`
+      });
     } catch (error) {
       console.error("Error deleting document from Firestore:", error);
       setIsSaving(false);
+      setAlert({
+        type: 'error',
+        message: `Failed to delete log: ${error.message || 'Permission denied. Please check your Firestore Security Rules.'}`
+      });
     }
   };
 
@@ -258,6 +473,39 @@ const Dashboard = () => {
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-[#0b0f19] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-[#0b0f19] to-black text-slate-200">
       
+      {/* Toast Alert Notification */}
+      {alert && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] w-[90%] max-w-md animate-fade-in-up">
+          <div className={`flex items-start gap-3 p-4 rounded-xl backdrop-blur-md shadow-xl border ${
+            alert.type === 'error' 
+              ? 'bg-[#1a0e12]/90 border-l-4 border-rose-500 border-y-rose-500/20 border-r-rose-500/20 text-slate-200 shadow-[0_4px_20px_rgba(244,63,94,0.2)]'
+              : 'bg-[#0f1d13]/90 border-l-4 border-[#C4FF36] border-y-[#C4FF36]/20 border-r-[#C4FF36]/20 text-slate-200 shadow-[0_4px_20px_rgba(196,255,54,0.2)]'
+          }`}>
+            {alert.type === 'error' ? (
+              <AlertCircle className="w-5 h-5 text-rose-450 shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 text-[#C4FF36] shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1 text-left">
+              <h4 className={`font-semibold text-xs uppercase tracking-wider mb-0.5 ${alert.type === 'error' ? 'text-rose-400' : 'text-[#C4FF36]'}`}>
+                {alert.type === 'error' ? 'Error' : 'Success'}
+              </h4>
+              <p className="text-xs text-slate-200/90 font-light leading-relaxed">{alert.message}</p>
+            </div>
+            <button 
+              onClick={() => setAlert(null)}
+              className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                alert.type === 'error' 
+                  ? 'text-rose-400 hover:bg-rose-500/10 hover:text-white' 
+                  : 'text-[#C4FF36] hover:bg-[#C4FF36]/10 hover:text-white'
+              }`}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* HEADER NAVBAR */}
       <header className="h-16 shrink-0 bg-[#0c101d]/60 backdrop-blur-md border-b border-slate-850 px-8 flex justify-between items-center z-10">
         {/* Exact Local Date/Time display */}
@@ -268,16 +516,9 @@ const Dashboard = () => {
 
         {/* User Card & Log Out */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <img
-              src={user?.avatar || DEFAULT_AVATAR}
-              alt="Avatar"
-              className="w-9 h-9 rounded-full object-cover border border-slate-800"
-            />
-            <div className="text-right hidden sm:block">
-              <h4 className="text-xs font-bold text-slate-200">{user?.name}</h4>
-              <p className="text-[10px] text-slate-500 font-light tracking-wide uppercase">{user?.role}</p>
-            </div>
+          <div className="text-right hidden sm:block">
+            <h4 className="text-xs font-bold text-slate-200">{user?.name}</h4>
+            <p className="text-[10px] text-slate-500 font-light tracking-wide uppercase">{user?.role}</p>
           </div>
           <button
             onClick={logout}
@@ -347,12 +588,27 @@ const Dashboard = () => {
           
           {/* Calendar Box */}
           <div className="lg:col-span-2 bg-slate-900/30 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-start mb-6">
               <div>
                 <h3 className="text-lg font-bold text-white">Monthly Calendar</h3>
                 <p className="text-xs text-slate-400">Click a day to add or edit attendance hours.</p>
+                {/* Color Legend */}
+                <div className="flex gap-3 mt-2.5 flex-wrap text-[10px] font-semibold text-slate-400 select-none">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-sm bg-slate-900 border border-slate-800" />
+                    <span>Working Day</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-sm bg-[#EF401D]/25 border border-[#EF401D]/45" />
+                    <span className="text-red-400/90">Weekend</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-sm bg-indigo-950/30 border border-indigo-900/50" />
+                    <span className="text-indigo-300">Day Off</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 bg-slate-950/60 border border-slate-800/80 px-3 py-1.5 rounded-xl text-xs font-bold">
+              <div className="flex items-center gap-2 bg-slate-950/60 border border-slate-800/80 px-3 py-1.5 rounded-xl text-xs font-bold mt-1">
                 <button onClick={handlePrevMonth} className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -384,8 +640,10 @@ const Dashboard = () => {
                 const hasHours = day.hours !== '0.00';
                 
                 let dayStyle = 'bg-slate-900/10 border-slate-800/60 text-slate-300 hover:border-slate-600 hover:bg-slate-900/30';
-                if (day.isWeekend) {
-                  dayStyle = 'bg-slate-950/20 border-slate-900/50 text-slate-550';
+                if (day.status === 'Day Off') {
+                  dayStyle = 'bg-indigo-950/30 border-indigo-900/50 text-indigo-200 hover:border-indigo-700 hover:bg-indigo-900/20';
+                } else if (day.isWeekend) {
+                  dayStyle = 'bg-[#EF401D]/15 border-[#EF401D]/30 text-rose-200 hover:border-[#EF401D]/60 hover:bg-[#EF401D]/25';
                 }
                 
                 const isSelected = selectedDay && selectedDay.dateKey === day.dateKey;
@@ -402,8 +660,13 @@ const Dashboard = () => {
                     <span className="text-xs font-bold">{day.dateNum}</span>
                     
                     {/* Micro logs rendering */}
-                    {day.isWeekend ? (
-                      <span className="text-[8px] font-bold text-amber-500/80 tracking-tight uppercase">Rest</span>
+                    {day.status === 'Day Off' ? (
+                      <div className="text-[8px] font-medium text-indigo-300 w-full text-left font-mono">
+                        <span className="block text-indigo-400 font-bold uppercase tracking-tight">Day Off</span>
+                        <span className="block truncate max-w-full text-slate-550">{day.reason || 'Day Off'}</span>
+                      </div>
+                    ) : day.isWeekend ? (
+                      <span className="text-[8px] font-bold text-[#EF401D] tracking-tight uppercase">Rest</span>
                     ) : hasHours ? (
                       <div className="text-[8px] font-medium text-slate-400 w-full text-left font-mono">
                         <span className="block text-[#C4FF36] font-bold">{day.hours} hrs</span>
@@ -440,56 +703,139 @@ const Dashboard = () => {
                   </div>
 
                   <form onSubmit={handleSave} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">IN Time</label>
-                        <input
-                          type="time"
-                          value={inTime}
-                          onChange={(e) => setInTime(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:border-[#C4FF36] focus:ring-1 focus:ring-[#C4FF36] text-white text-xs font-mono"
-                          required
-                        />
+                    {/* Day Off Switch */}
+                    <div className="flex items-center justify-between p-3 bg-slate-950/40 rounded-xl border border-slate-800">
+                      <div className="space-y-0.5 text-left">
+                        <label className="text-xs font-bold text-white block">Day Off</label>
+                        <p className="text-[10px] text-slate-500 font-light">Mark this day as a non-working day off</p>
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">OUT Time</label>
-                        <input
-                          type="time"
-                          value={outTime}
-                          onChange={(e) => setOutTime(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:border-[#C4FF36] focus:ring-1 focus:ring-[#C4FF36] text-white text-xs font-mono"
-                          required
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newStatus = status === 'Day Off' ? 'Present' : 'Day Off';
+                          setStatus(newStatus);
+                          if (newStatus === 'Day Off') {
+                            setInTime('');
+                            setOutTime('');
+                          } else {
+                            setInTime('08:30');
+                            setOutTime('17:30');
+                          }
+                        }}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${status === 'Day Off' ? 'bg-indigo-650' : 'bg-slate-800'}`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${status === 'Day Off' ? 'translate-x-4' : 'translate-x-0'}`}
                         />
+                      </button>
+                    </div>
+
+                    <div className={`space-y-4 transition-all duration-200 ${status === 'Day Off' ? 'opacity-40 pointer-events-none' : ''}`}>
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* IN Time Field */}
+                        <div className="space-y-1.5 relative">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">IN Time</label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={inTime}
+                              onChange={handleInTimeChange}
+                              onKeyDown={(e) => handleTimeKeyDown(e, setInTime, inTime)}
+                              onBlur={handleInBlur}
+                              placeholder="08:30"
+                              disabled={status === 'Day Off'}
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:border-[#C4FF36] focus:ring-1 focus:ring-[#C4FF36] text-white text-xs font-mono transition-all pr-8"
+                            />
+                            <Clock className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-2.5 pointer-events-none" />
+                          </div>
+                        </div>
+
+                        {/* OUT Time Field */}
+                        <div className="space-y-1.5 relative">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">OUT Time</label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={outTime}
+                              onChange={handleOutTimeChange}
+                              onKeyDown={(e) => handleTimeKeyDown(e, setOutTime, outTime)}
+                              onBlur={handleOutBlur}
+                              placeholder="17:30"
+                              disabled={status === 'Day Off'}
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:border-[#C4FF36] focus:ring-1 focus:ring-[#C4FF36] text-white text-xs font-mono transition-all pr-8"
+                            />
+                            <Clock className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-2.5 pointer-events-none" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Quick Presets</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setInTime('08:30'); setOutTime('17:30'); }}
+                            disabled={status === 'Day Off'}
+                            className="py-2 px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
+                          >
+                            Full Day (08:30 - 17:30)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setInTime('09:00'); setOutTime('18:00'); }}
+                            disabled={status === 'Day Off'}
+                            className="py-2 px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
+                          >
+                            Full Day (09:00 - 18:00)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setInTime('08:30'); setOutTime('13:00'); }}
+                            disabled={status === 'Day Off'}
+                            className="py-2 px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
+                          >
+                            Half Day (08:30 - 13:00)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setInTime('13:00'); setOutTime('17:30'); }}
+                            disabled={status === 'Day Off'}
+                            className="py-2 px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
+                          >
+                            Half Day (13:00 - 17:30)
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Reason / Task Info</label>
+                    <div className="space-y-1.5 font-medium">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        {status === 'Day Off' ? 'Day Off Reason / Info' : 'Reason / Task Info'}
+                      </label>
                       <input
                         type="text"
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
-                        placeholder="e.g. Web Developments"
+                        placeholder={status === 'Day Off' ? 'e.g. Personal Holiday' : 'e.g. Web Developments'}
                         className="w-full px-3 py-2.5 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:border-[#C4FF36] focus:ring-1 focus:ring-[#C4FF36] text-white text-xs font-light"
                       />
                     </div>
 
-                    {inTime && outTime && (
-                      <div className="mt-4 p-3 bg-slate-950/40 rounded-xl border border-slate-800 text-xs space-y-1.5">
-                        <div className="flex justify-between text-slate-400">
-                          <span>Calculated Hours:</span>
-                          <span className="font-bold text-white font-mono">
-                            {calculateHoursAndSalary(inTime, outTime).hours} hrs
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-slate-400 border-t border-slate-800 pt-1.5 mt-1.5">
-                          <span>Estimated Day Pay:</span>
-                          <span className="font-bold text-[#C4FF36] font-mono">
-                            Rs. {calculateHoursAndSalary(inTime, outTime).salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
+                    <div className="mt-4 p-3 bg-slate-950/40 rounded-xl border border-slate-800 text-xs space-y-1.5">
+                      <div className="flex justify-between text-slate-400">
+                        <span>Calculated Hours:</span>
+                        <span className={`font-bold font-mono ${status === 'Day Off' ? 'text-indigo-400' : 'text-white'}`}>
+                          {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).hours : '0.00')} hrs
+                        </span>
                       </div>
-                    )}
+                      <div className="flex justify-between text-slate-400 border-t border-slate-800 pt-1.5 mt-1.5">
+                        <span>Estimated Day Pay:</span>
+                        <span className={`font-bold font-mono ${status === 'Day Off' ? 'text-indigo-400' : 'text-[#C4FF36]'}`}>
+                          Rs. {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00')}
+                        </span>
+                      </div>
+                    </div>
 
                     <div className="pt-2 flex gap-2">
                       <button
@@ -501,7 +847,7 @@ const Dashboard = () => {
                         {isSaving ? 'Saving...' : 'Save Log'}
                       </button>
                       
-                      {selectedDay.docId && (
+                      {(selectedDay.docId || selectedDay.checkIn || selectedDay.checkOut || selectedDay.status === 'Day Off') && (
                         <button
                           type="button"
                           onClick={handleDelete}
@@ -536,11 +882,11 @@ const Dashboard = () => {
             </div>
             
             <button
-              onClick={() => exportSalarySheetToWord(daysList, monthNames[currentMonth], currentYear, totalHoursDecimal, totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}
+              onClick={() => exportSalarySheetToExcel(daysList, monthNames[currentMonth], currentYear, totalHoursDecimal, totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}
               className="flex items-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-semibold bg-[#C4FF36] hover:bg-[#b0eb2f] text-black shadow-sm transition-all cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5" />
-              Download Salary Sheet (.doc)
+              Download Salary Sheet (.xls)
             </button>
           </div>
 
@@ -561,19 +907,35 @@ const Dashboard = () => {
               <tbody className="divide-y divide-slate-850 text-xs font-medium text-slate-300">
                 {daysList.map((day, idx) => {
                   const isWeekend = day.status === 'Weekend';
+                  const isDayOff = day.status === 'Day Off';
                   const shortMonth = monthNames[currentMonth].slice(0, 3);
                   
                   if (isWeekend) {
                     return (
-                      <tr key={day.dateKey} className="bg-[#FFFF00] text-black border-slate-800">
-                        <td className="px-6 py-2.5 text-center border border-slate-300/40">{idx + 1}</td>
-                        <td className="px-6 py-2.5 border border-slate-300/40 font-bold">{day.dateNum}-{shortMonth}</td>
-                        <td className="px-6 py-2.5 border border-slate-300/40 font-bold">{day.dayOfWeek}</td>
-                        <td className="px-6 py-2.5 text-center border border-slate-300/40">—</td>
-                        <td className="px-6 py-2.5 text-center border border-slate-300/40">—</td>
-                        <td className="px-6 py-2.5 text-center border border-slate-300/40">—</td>
-                        <td className="px-6 py-2.5 border border-slate-300/40">—</td>
-                        <td className="px-6 py-2.5 border border-slate-300/40 font-bold text-amber-700">{day.dayOfWeek === 'Sat' ? 'Saturday — Weekend' : 'Sunday — Weekend'}</td>
+                      <tr key={day.dateKey} className="bg-[#EF401D] text-white border-slate-800">
+                        <td className="px-6 py-2.5 text-center border border-slate-850/40">{idx + 1}</td>
+                        <td className="px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dateNum}-{shortMonth}</td>
+                        <td className="px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dayOfWeek}</td>
+                        <td className="px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
+                        <td className="px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
+                        <td className="px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
+                        <td className="px-6 py-2.5 border border-slate-850/40 text-red-200">—</td>
+                        <td className="px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dayOfWeek === 'Sat' ? 'Saturday — Weekend' : 'Sunday — Weekend'}</td>
+                      </tr>
+                    );
+                  }
+
+                  if (isDayOff) {
+                    return (
+                      <tr key={day.dateKey} className="bg-indigo-950/40 text-indigo-200 border-slate-850">
+                        <td className="px-6 py-2.5 text-center border border-slate-800">{idx + 1}</td>
+                        <td className="px-6 py-2.5 border border-slate-800 font-bold text-indigo-100">{day.dateNum}-{shortMonth}</td>
+                        <td className="px-6 py-2.5 border border-slate-800 font-bold text-indigo-100">{day.dayOfWeek}</td>
+                        <td className="px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
+                        <td className="px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
+                        <td className="px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
+                        <td className="px-6 py-2.5 border border-slate-800 text-indigo-400/40">—</td>
+                        <td className="px-6 py-2.5 border border-slate-800 font-bold text-indigo-300">Day Off — {day.reason || 'Not Working'}</td>
                       </tr>
                     );
                   }

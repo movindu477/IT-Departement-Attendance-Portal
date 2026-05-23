@@ -70,18 +70,15 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       return true;
     } catch (error) {
-      setLoading(false);
       throw error;
     }
   };
 
   const register = async (name, email, password) => {
-    setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       // Update Auth profile display name
@@ -104,10 +101,8 @@ export const AuthProvider = ({ children }) => {
         ...userData
       });
       setIsAuthenticated(true);
-      setLoading(false);
       return true;
     } catch (error) {
-      setLoading(false);
       throw error;
     }
   };
