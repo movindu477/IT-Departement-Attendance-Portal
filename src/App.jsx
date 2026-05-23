@@ -6,8 +6,7 @@ import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import Dashboard from './components/Dashboard/Dashboard';
 
-import logoImg from './assets/images/logo.png';
-import illustrationImg from './assets/images/image1.png';
+import backgroundImage from './assets/images/image1.jpg';
 
 function SplitLayoutWrapper() {
   const { isAuthenticated, loading } = useAuth();
@@ -25,40 +24,29 @@ function SplitLayoutWrapper() {
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-row font-['Poppins',sans-serif] bg-black text-slate-100">
-      {/* LEFT BLACK PANEL */}
-      <div className="w-[30%] min-w-[280px] max-w-[360px] bg-black p-10 flex flex-col justify-between items-center shrink-0 select-none border-r border-slate-900">
+      {/* LEFT PANEL WITH IMAGE BACKGROUND */}
+      <div 
+        style={{ backgroundImage: `url(${backgroundImage})` }}
+        className="w-[30%] min-w-[280px] max-w-[360px] bg-cover bg-center shrink-0 select-none relative border-r border-slate-900 flex flex-col justify-between p-10"
+      >
+        {/* Semi-transparent dark overlay for high text contrast */}
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] z-0" />
         
-        {/* Top: Logo & Title */}
-        <div className="w-full flex flex-col items-center gap-6 mt-6">
-          <div className="w-full flex justify-center">
-            <img 
-              src={logoImg} 
-              alt="APIIT Logo" 
-              className="h-16 w-auto object-contain"
-              draggable="false"
-            />
-          </div>
-          <div className="text-center">
-            <h1 className="text-2xl font-light tracking-wide text-white">
-              Attendance Portal
-            </h1>
-          </div>
+        {/* Top: Title */}
+        <div className="relative z-10 w-full text-center mt-6">
+          <h1 className="text-2xl font-light tracking-wide text-white drop-shadow-md">
+            Attendance Portal
+          </h1>
         </div>
 
-        {/* Bottom: Illustrator Image */}
-        <div className="w-full flex justify-center mb-6">
-          <img 
-            src={illustrationImg} 
-            alt="Attendance Illustration" 
-            className="w-full max-w-[290px] h-auto object-contain opacity-90"
-            draggable="false"
-          />
+        {/* Bottom: Copyright Info */}
+        <div className="relative z-10 w-full text-center text-xs text-white/50 mb-6 font-light">
+          © 2026 Attendance Portal. All rights reserved.
         </div>
-
       </div>
 
-      {/* RIGHT MAIN CONTAINER */}
-      <div className="flex-1 h-full bg-[#f8fafc] text-slate-800 flex flex-col overflow-hidden relative">
+      {/* RIGHT MAIN CONTAINER - DARK BACKGROUND */}
+      <div className="flex-1 h-full bg-[#0b0f19] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-[#0b0f19] to-black text-slate-200 flex flex-col overflow-hidden relative">
         <Outlet />
       </div>
     </div>
