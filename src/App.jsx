@@ -25,11 +25,11 @@ function SplitLayoutWrapper() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-row font-['Poppins',sans-serif] bg-black text-slate-100">
+    <div className="h-screen w-screen overflow-hidden flex flex-col md:flex-row font-['Poppins',sans-serif] bg-black text-slate-100">
       {/* LEFT PANEL WITH IMAGE BACKGROUND */}
       <div 
         style={{ backgroundImage: `url(${backgroundImage})` }}
-        className="w-[30%] min-w-[280px] max-w-[360px] bg-cover bg-center shrink-0 select-none relative border-r border-slate-900 flex flex-col justify-between p-10"
+        className="hidden md:flex w-[30%] min-w-[280px] max-w-[360px] bg-cover bg-center shrink-0 select-none relative border-r border-slate-900 flex-col justify-between p-10"
       >
         {/* Semi-transparent dark overlay for high text contrast */}
         <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] z-0" />

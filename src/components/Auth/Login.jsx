@@ -38,7 +38,7 @@ const Login = () => {
   };
 
   return (
-    <div className="h-full w-full flex flex-col items-center px-6 pb-36 justify-end text-slate-200">
+    <div className="h-full w-full flex flex-col items-center px-6 justify-center text-slate-200">
       <div className={`w-full max-w-md transition-all duration-700 ${isRedirecting ? 'opacity-0 translate-y-[-10px] scale-95 pointer-events-none' : 'animate-fade-in-up'}`}>
         <div className="mb-8">
           <h2 className="text-3xl font-light text-white tracking-tight">Login</h2>

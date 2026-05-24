@@ -371,6 +371,14 @@ const Dashboard = () => {
     setInTime(isDayOff ? '' : (day.checkIn || '08:30'));
     setOutTime(isDayOff ? '' : (day.checkOut || '17:30')); // default out is 17:30
     setReason(day.reason || '');
+    
+    // Smooth scroll into view for the editor drawer panel on mobile/tablet viewports
+    setTimeout(() => {
+      const editorPanel = document.getElementById('attendance-editor-panel');
+      if (editorPanel && window.innerWidth < 1024) {
+        editorPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 50);
   };
 
   // Saving attendance document to Firestore
@@ -507,9 +515,9 @@ const Dashboard = () => {
       )}
       
       {/* HEADER NAVBAR */}
-      <header className="h-16 shrink-0 bg-[#0c101d]/60 backdrop-blur-md border-b border-slate-850 px-8 flex justify-between items-center z-10">
+      <header className="h-16 shrink-0 bg-[#0c101d]/60 backdrop-blur-md border-b border-slate-850 px-4 sm:px-8 flex justify-between items-center z-10">
         {/* Exact Local Date/Time display */}
-        <div className="flex items-center gap-2.5 text-slate-400 font-mono text-sm font-semibold">
+        <div className="flex items-center gap-2.5 text-slate-400 font-mono text-xs sm:text-sm font-semibold">
           <Clock className="w-4 h-4 text-slate-500" />
           <span className="text-slate-300 select-none tracking-tight">{timeString || 'Loading clock...'}</span>
         </div>
@@ -531,10 +539,10 @@ const Dashboard = () => {
       </header>
 
       {/* VIEWPORT SCROLLABLE AREA */}
-      <div className="flex-1 overflow-y-auto p-8 space-y-8">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 sm:space-y-8">
         
         {/* TOP METRICS ROW */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           
           <div className="bg-slate-900/30 backdrop-blur-md border border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center justify-between">
             <div className="space-y-1">
@@ -584,11 +592,11 @@ const Dashboard = () => {
         </div>
 
         {/* CALENDAR AND EDIT DRAWER SPLIT */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           
           {/* Calendar Box */}
-          <div className="lg:col-span-2 bg-slate-900/30 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-start mb-6">
+          <div className="lg:col-span-2 bg-slate-900/30 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-2 mb-6">
               <div>
                 <h3 className="text-lg font-bold text-white">Monthly Calendar</h3>
                 <p className="text-xs text-slate-400">Click a day to add or edit attendance hours.</p>
@@ -608,7 +616,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 bg-slate-950/60 border border-slate-800/80 px-3 py-1.5 rounded-xl text-xs font-bold mt-1">
+              <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-950/60 border border-slate-800/80 px-3 py-1.5 rounded-xl text-xs font-bold mt-1 w-full sm:w-auto">
                 <button onClick={handlePrevMonth} className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -629,7 +637,7 @@ const Dashboard = () => {
             </div>
 
             {/* Calendar grid cells */}
-            <div className="grid grid-cols-7 gap-2.5">
+            <div className="grid grid-cols-7 gap-1.5 sm:gap-2.5">
               {/* Padding empty slots */}
               {Array.from({ length: startOffset }).map((_, idx) => (
                 <div key={`empty-${idx}`} className="aspect-square bg-slate-950/10 rounded-xl border border-slate-900/50" />
@@ -655,25 +663,25 @@ const Dashboard = () => {
                   <button
                     key={day.dateKey}
                     onClick={() => handleSelectDay(day)}
-                    className={`aspect-square border rounded-xl p-2 flex flex-col justify-between items-start transition-all cursor-pointer group relative ${dayStyle}`}
+                    className={`aspect-square border rounded-xl p-1.5 sm:p-2.5 flex flex-col justify-between items-start transition-all cursor-pointer group relative ${dayStyle}`}
                   >
-                    <span className="text-xs font-bold">{day.dateNum}</span>
+                    <span className="text-[10px] sm:text-xs font-bold">{day.dateNum}</span>
                     
                     {/* Micro logs rendering */}
                     {day.status === 'Day Off' ? (
-                      <div className="text-[8px] font-medium text-indigo-300 w-full text-left font-mono">
-                        <span className="block text-indigo-400 font-bold uppercase tracking-tight">Day Off</span>
-                        <span className="block truncate max-w-full text-slate-550">{day.reason || 'Day Off'}</span>
+                      <div className="text-[7px] sm:text-[8px] font-medium text-indigo-300 w-full text-left font-mono leading-tight">
+                        <span className="block text-indigo-400 font-bold uppercase tracking-tight">Off</span>
+                        <span className="hidden sm:block truncate max-w-full text-slate-550">{day.reason || 'Day Off'}</span>
                       </div>
                     ) : day.isWeekend ? (
-                      <span className="text-[8px] font-bold text-[#EF401D] tracking-tight uppercase">Rest</span>
+                      <span className="text-[7px] sm:text-[8px] font-bold text-[#EF401D] tracking-tight uppercase">Rest</span>
                     ) : hasHours ? (
-                      <div className="text-[8px] font-medium text-slate-400 w-full text-left font-mono">
-                        <span className="block text-[#C4FF36] font-bold">{day.hours} hrs</span>
-                        <span className="block truncate max-w-full text-slate-500">{day.reason || 'Present'}</span>
+                      <div className="text-[7px] sm:text-[8px] font-medium text-slate-400 w-full text-left font-mono leading-tight">
+                        <span className="block text-[#C4FF36] font-bold">{day.hours}h</span>
+                        <span className="hidden sm:block truncate max-w-full text-slate-550">{day.reason || 'Present'}</span>
                       </div>
                     ) : (
-                      <span className="text-[8px] text-slate-600 font-light">Empty</span>
+                      <span className="text-[7px] sm:text-[8px] text-slate-600 font-light">Empty</span>
                     )}
                   </button>
                 );
@@ -682,7 +690,10 @@ const Dashboard = () => {
           </div>
 
           {/* Edit Drawer Box */}
-          <div className="bg-slate-900/30 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 shadow-sm flex flex-col h-full min-h-[380px]">
+          <div 
+            id="attendance-editor-panel"
+            className="bg-slate-900/30 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col h-full min-h-[380px]"
+          >
             {selectedDay ? (
               <div className="flex-1 flex flex-col justify-between">
                 <div>
@@ -772,12 +783,12 @@ const Dashboard = () => {
                       {/* Quick Presets */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Quick Presets</label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-2">
                           <button
                             type="button"
                             onClick={() => { setInTime('08:30'); setOutTime('17:30'); }}
                             disabled={status === 'Day Off'}
-                            className="py-2 px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
+                            className="py-2 px-1.5 sm:px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[9px] sm:text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
                           >
                             Full Day (08:30 - 17:30)
                           </button>
@@ -785,7 +796,7 @@ const Dashboard = () => {
                             type="button"
                             onClick={() => { setInTime('09:00'); setOutTime('18:00'); }}
                             disabled={status === 'Day Off'}
-                            className="py-2 px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
+                            className="py-2 px-1.5 sm:px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[9px] sm:text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
                           >
                             Full Day (09:00 - 18:00)
                           </button>
@@ -793,7 +804,7 @@ const Dashboard = () => {
                             type="button"
                             onClick={() => { setInTime('08:30'); setOutTime('13:00'); }}
                             disabled={status === 'Day Off'}
-                            className="py-2 px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
+                            className="py-2 px-1.5 sm:px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[9px] sm:text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
                           >
                             Half Day (08:30 - 13:00)
                           </button>
@@ -801,7 +812,7 @@ const Dashboard = () => {
                             type="button"
                             onClick={() => { setInTime('13:00'); setOutTime('17:30'); }}
                             disabled={status === 'Day Off'}
-                            className="py-2 px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
+                            className="py-2 px-1.5 sm:px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[9px] sm:text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
                           >
                             Half Day (13:00 - 17:30)
                           </button>
@@ -894,14 +905,14 @@ const Dashboard = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-black text-white text-[11px] font-bold uppercase border-b border-slate-850">
-                  <th className="px-6 py-3 text-center w-12 border border-slate-800">#</th>
-                  <th className="px-6 py-3 border border-slate-800">Date</th>
-                  <th className="px-6 py-3 border border-slate-800">Day</th>
-                  <th className="px-6 py-3 text-center border border-slate-800">IN</th>
-                  <th className="px-6 py-3 text-center border border-slate-800">OUT</th>
-                  <th className="px-6 py-3 text-center border border-slate-800">Hours</th>
-                  <th className="px-6 py-3 border border-slate-800">Salary (Rs.)</th>
-                  <th className="px-6 py-3 border border-slate-800">Reason / Status</th>
+                  <th className="px-3 sm:px-6 py-3 text-center w-12 border border-slate-800">#</th>
+                  <th className="px-3 sm:px-6 py-3 border border-slate-800">Date</th>
+                  <th className="px-3 sm:px-6 py-3 border border-slate-800">Day</th>
+                  <th className="px-3 sm:px-6 py-3 text-center border border-slate-800">IN</th>
+                  <th className="px-3 sm:px-6 py-3 text-center border border-slate-800">OUT</th>
+                  <th className="px-3 sm:px-6 py-3 text-center border border-slate-800">Hours</th>
+                  <th className="px-3 sm:px-6 py-3 border border-slate-800">Salary (Rs.)</th>
+                  <th className="px-3 sm:px-6 py-3 border border-slate-800">Reason / Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850 text-xs font-medium text-slate-300">
@@ -913,14 +924,14 @@ const Dashboard = () => {
                   if (isWeekend) {
                     return (
                       <tr key={day.dateKey} className="bg-[#EF401D] text-white border-slate-800">
-                        <td className="px-6 py-2.5 text-center border border-slate-850/40">{idx + 1}</td>
-                        <td className="px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dateNum}-{shortMonth}</td>
-                        <td className="px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dayOfWeek}</td>
-                        <td className="px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
-                        <td className="px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
-                        <td className="px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
-                        <td className="px-6 py-2.5 border border-slate-850/40 text-red-200">—</td>
-                        <td className="px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dayOfWeek === 'Sat' ? 'Saturday — Weekend' : 'Sunday — Weekend'}</td>
+                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-850/40">{idx + 1}</td>
+                        <td className="px-3 sm:px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dateNum}-{shortMonth}</td>
+                        <td className="px-3 sm:px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dayOfWeek}</td>
+                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
+                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
+                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
+                        <td className="px-3 sm:px-6 py-2.5 border border-slate-850/40 text-red-200">—</td>
+                        <td className="px-3 sm:px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dayOfWeek === 'Sat' ? 'Saturday — Weekend' : 'Sunday — Weekend'}</td>
                       </tr>
                     );
                   }
@@ -928,14 +939,14 @@ const Dashboard = () => {
                   if (isDayOff) {
                     return (
                       <tr key={day.dateKey} className="bg-indigo-950/40 text-indigo-200 border-slate-850">
-                        <td className="px-6 py-2.5 text-center border border-slate-800">{idx + 1}</td>
-                        <td className="px-6 py-2.5 border border-slate-800 font-bold text-indigo-100">{day.dateNum}-{shortMonth}</td>
-                        <td className="px-6 py-2.5 border border-slate-800 font-bold text-indigo-100">{day.dayOfWeek}</td>
-                        <td className="px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
-                        <td className="px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
-                        <td className="px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
-                        <td className="px-6 py-2.5 border border-slate-800 text-indigo-400/40">—</td>
-                        <td className="px-6 py-2.5 border border-slate-800 font-bold text-indigo-300">Day Off — {day.reason || 'Not Working'}</td>
+                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800">{idx + 1}</td>
+                        <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold text-indigo-100">{day.dateNum}-{shortMonth}</td>
+                        <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold text-indigo-100">{day.dayOfWeek}</td>
+                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
+                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
+                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
+                        <td className="px-3 sm:px-6 py-2.5 border border-slate-800 text-indigo-400/40">—</td>
+                        <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold text-indigo-300">Day Off — {day.reason || 'Not Working'}</td>
                       </tr>
                     );
                   }
@@ -944,16 +955,16 @@ const Dashboard = () => {
 
                   return (
                     <tr key={day.dateKey} className={`${idx % 2 === 0 ? 'bg-[#0f1423]/20' : 'bg-[#0f1423]/50'} hover:bg-slate-900/30 transition-colors`}>
-                      <td className="px-6 py-2.5 text-center border border-slate-800">{idx + 1}</td>
-                      <td className="px-6 py-2.5 border border-slate-800 font-bold text-white">{day.dateNum}-{shortMonth}</td>
-                      <td className="px-6 py-2.5 border border-slate-800 font-bold text-white">{day.dayOfWeek}</td>
-                      <td className="px-6 py-2.5 text-center border border-slate-800 font-mono">{day.checkIn || '—'}</td>
-                      <td className="px-6 py-2.5 text-center border border-slate-800 font-mono">{day.checkOut || '—'}</td>
-                      <td className="px-6 py-2.5 text-center border border-slate-800 font-mono font-bold text-white">{hasHours ? day.hours : '—'}</td>
-                      <td className="px-6 py-2.5 border border-slate-800 font-bold font-mono text-white">
+                      <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800">{idx + 1}</td>
+                      <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold text-white">{day.dateNum}-{shortMonth}</td>
+                      <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold text-white">{day.dayOfWeek}</td>
+                      <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 font-mono">{day.checkIn || '—'}</td>
+                      <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 font-mono">{day.checkOut || '—'}</td>
+                      <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 font-mono font-bold text-white">{hasHours ? day.hours : '—'}</td>
+                      <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold font-mono text-white">
                         {day.salary > 0 ? `Rs. ${day.salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                       </td>
-                      <td className={`px-6 py-2.5 border border-slate-800 ${day.status === 'Absent' ? 'text-rose-500 font-bold' : 'text-slate-400 font-light'}`}>
+                      <td className={`px-3 sm:px-6 py-2.5 border border-slate-800 ${day.status === 'Absent' ? 'text-rose-500 font-bold' : 'text-slate-400 font-light'}`}>
                         {day.reason || (day.status === 'Absent' ? 'Absent' : '—')}
                       </td>
                     </tr>
@@ -962,16 +973,16 @@ const Dashboard = () => {
                 
                 {/* Total row matching green highlighted cell in the spreadsheet */}
                 <tr className="bg-slate-950/60 font-bold border-t-2 border-slate-800 text-sm">
-                  <td colspan="3" className="px-6 py-3 text-center border border-slate-800 bg-[#C4FF36] text-black font-extrabold uppercase select-none">
+                  <td colspan="3" className="px-3 sm:px-6 py-3 text-center border border-slate-800 bg-[#C4FF36] text-black font-extrabold uppercase select-none">
                     TOTAL
                   </td>
-                  <td className="px-6 py-3 text-center border border-slate-800">—</td>
-                  <td className="px-6 py-3 text-center border border-slate-800">—</td>
-                  <td className="px-6 py-3 text-center border border-slate-800 font-mono text-white font-bold">{totalHoursDecimal}</td>
-                  <td className="px-6 py-3 border border-slate-800 font-mono text-[#C4FF36] font-bold font-mono">
+                  <td className="px-3 sm:px-6 py-3 text-center border border-slate-800">—</td>
+                  <td className="px-3 sm:px-6 py-3 text-center border border-slate-800">—</td>
+                  <td className="px-3 sm:px-6 py-3 text-center border border-slate-800 font-mono text-white font-bold">{totalHoursDecimal}</td>
+                  <td className="px-3 sm:px-6 py-3 border border-slate-800 font-mono text-[#C4FF36] font-bold">
                     Rs. {totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="px-6 py-3 border border-slate-800 text-xs text-slate-500 font-light">Calculated at Rs. 240/hr</td>
+                  <td className="px-3 sm:px-6 py-3 border border-slate-800 text-xs text-slate-500 font-light">Calculated at Rs. 240/hr</td>
                 </tr>
               </tbody>
             </table>

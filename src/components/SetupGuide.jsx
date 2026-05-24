@@ -28,8 +28,8 @@ export default function SetupGuide({ error }) {
   };
 
   return (
-    <div className="min-h-screen w-screen bg-[#0b0f19] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-[#0b0f19] to-black text-slate-100 flex flex-col justify-center items-center p-6 font-['Poppins',sans-serif]">
-      <div className="max-w-2xl w-full bg-slate-900/50 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+    <div className="min-h-screen w-screen bg-[#0b0f19] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-[#0b0f19] to-black text-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 font-['Poppins',sans-serif]">
+      <div className="max-w-2xl w-full bg-slate-900/50 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-5 sm:p-8 shadow-2xl relative overflow-hidden">
         {/* Decorative Glow */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-600/5 rounded-full blur-3xl pointer-events-none" />
