@@ -25,8 +25,9 @@ const Dashboard = () => {
   const { user, logout } = useAuth();
 
   // Navigation states
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(4); // 4 = May (0-indexed)
+  const today = new Date();
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   
   // Real-time time display
   const [timeString, setTimeString] = useState('');
@@ -273,6 +274,35 @@ const Dashboard = () => {
 
     return () => unsubscribe();
   }, [user?.uid]);
+
+  // Automatically clean up database logs from previous months when the real-world month changes
+  useEffect(() => {
+    if (!user?.uid || firestoreLogs.length === 0) return;
+
+    const today = new Date();
+    const currentYearStr = today.getFullYear();
+    const currentMonthNum = today.getMonth() + 1; // 1-indexed
+    const currentMonthStr = currentMonthNum < 10 ? `0${currentMonthNum}` : currentMonthNum;
+    
+    // First day of the current real-world month
+    const startOfCurrentMonthKey = `${currentYearStr}-${currentMonthStr}-01`;
+
+    // Filter logs that are older than the current month
+    const oldLogs = firestoreLogs.filter(log => log.date && log.date < startOfCurrentMonthKey);
+
+    if (oldLogs.length > 0) {
+      console.log(`Cleaning up ${oldLogs.length} old logs from previous months...`);
+      oldLogs.forEach(async (oldLog) => {
+        const docId = oldLog.id || `${user.uid}_${oldLog.date}`;
+        try {
+          await deleteDoc(doc(db, 'attendance', docId));
+          console.log(`Successfully cleaned up old log: ${docId}`);
+        } catch (e) {
+          console.error(`Failed to delete old log ${docId}:`, e);
+        }
+      });
+    }
+  }, [firestoreLogs, user?.uid]);
 
   // Helper to get days in month
   const getDaysInMonth = (month, year) => {
