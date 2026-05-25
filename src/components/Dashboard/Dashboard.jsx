@@ -32,6 +32,15 @@ const Dashboard = () => {
   // Real-time time display
   const [timeString, setTimeString] = useState('');
   
+  // Real-world current date key (YYYY-MM-DD)
+  const [realDateKey, setRealDateKey] = useState('');
+  // Check if today is the last day of the current month
+  const [isLastDayOfMonth, setIsLastDayOfMonth] = useState(false);
+  // Dismiss banner state (persisted per-session)
+  const [isBannerDismissed, setIsBannerDismissed] = useState(() => {
+    return sessionStorage.getItem('attendance_cleanup_banner_dismissed') === 'true';
+  });
+  
   // Firestore data state
   const [firestoreLogs, setFirestoreLogs] = useState([]);
   
@@ -247,11 +256,24 @@ const Dashboard = () => {
         second: '2-digit',
         hour12: true
       }));
+
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+      setRealDateKey(`${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`);
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Check if today is the last day of the current month
+  useEffect(() => {
+    if (!realDateKey) return;
+    const now = new Date();
+    const lastDayOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    setIsLastDayOfMonth(now.getDate() === lastDayOfThisMonth);
+  }, [realDateKey]);
 
   // Listen to attendance logs in real-time from Firestore for the logged-in user
   useEffect(() => {
@@ -277,12 +299,9 @@ const Dashboard = () => {
 
   // Automatically clean up database logs from previous months when the real-world month changes
   useEffect(() => {
-    if (!user?.uid || firestoreLogs.length === 0) return;
+    if (!user?.uid || firestoreLogs.length === 0 || !realDateKey) return;
 
-    const today = new Date();
-    const currentYearStr = today.getFullYear();
-    const currentMonthNum = today.getMonth() + 1; // 1-indexed
-    const currentMonthStr = currentMonthNum < 10 ? `0${currentMonthNum}` : currentMonthNum;
+    const [currentYearStr, currentMonthStr] = realDateKey.split('-');
     
     // First day of the current real-world month
     const startOfCurrentMonthKey = `${currentYearStr}-${currentMonthStr}-01`;
@@ -302,7 +321,7 @@ const Dashboard = () => {
         }
       });
     }
-  }, [firestoreLogs, user?.uid]);
+  }, [firestoreLogs, user?.uid, realDateKey]);
 
   // Helper to get days in month
   const getDaysInMonth = (month, year) => {
@@ -571,6 +590,56 @@ const Dashboard = () => {
       {/* VIEWPORT SCROLLABLE AREA */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 sm:space-y-8">
         
+        {/* Warning Banner on the Last Day of the Month */}
+        {isLastDayOfMonth && !isBannerDismissed && (
+          <div className="bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-slate-900/30 backdrop-blur-md border border-amber-500/30 p-5 rounded-2xl shadow-[0_4px_20px_rgba(245,158,11,0.05)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in-up">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                <AlertCircle className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1 text-left">
+                <h4 className="text-sm font-bold text-white tracking-tight flex flex-wrap items-center gap-2">
+                  Monthly Data Cleanup Scheduled Tonight
+                  <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/20">
+                    Tonight 24:00 (12:00 AM)
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-350 leading-relaxed font-light">
+                  All attendance and salary records for this month will be automatically cleared at midnight (24:00). 
+                  Please ensure all your work is logged and download your final Salary Sheet (.xls) before the cleanup.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              <button
+                onClick={() => {
+                  exportSalarySheetToExcel(
+                    daysList, 
+                    monthNames[currentMonth], 
+                    currentYear, 
+                    totalHoursDecimal, 
+                    totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                  );
+                }}
+                className="flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl text-xs font-bold bg-[#C4FF36] hover:bg-[#b0eb2f] text-black shadow-sm transition-all cursor-pointer w-full md:w-auto shrink-0"
+              >
+                <FileText className="w-4 h-4" />
+                Download Salary Sheet (.xls)
+              </button>
+              <button
+                onClick={() => {
+                  setIsBannerDismissed(true);
+                  sessionStorage.setItem('attendance_cleanup_banner_dismissed', 'true');
+                }}
+                className="p-2 text-slate-400 hover:text-white bg-slate-950/40 hover:bg-slate-950/80 rounded-xl transition-all cursor-pointer border border-slate-800/80 shrink-0"
+                title="Dismiss warning"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* TOP METRICS ROW */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           
