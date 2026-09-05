@@ -33,3 +33,9 @@ dist-ssr
 scripts/serviceAccountKey.json
 *firebase-adminsdk*.json
 
+
+# Firebase emulator artifacts
+firestore-debug.log
+database-debug.log
+ui-debug.log
+firebase-debug.log

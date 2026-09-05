@@ -9,6 +9,9 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
+// Rate previously hardcoded in Dashboard; now the seed for new accounts.
+const DEFAULT_HOURLY_RATE = 240;
+
 const AuthContext = createContext(null);
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100';
@@ -23,18 +26,23 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          // Attempt to fetch profile info from Firestore /users/{uid}
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
-          
-          if (userDocSnap.exists()) {
-            const data = userDocSnap.data();
+          // Public profile and owner-only pay data live in separate collections
+          const [pubSnap, privSnap] = await Promise.all([
+            getDoc(doc(db, 'users', firebaseUser.uid)),
+            getDoc(doc(db, 'userPrivate', firebaseUser.uid))
+          ]);
+
+          if (pubSnap.exists()) {
+            const data = pubSnap.data();
+            const priv = privSnap.exists() ? privSnap.data() : {};
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               name: data.name || firebaseUser.displayName || 'User',
-              role: data.role || 'Software Engineer',
-              avatar: data.avatar || DEFAULT_AVATAR
+              jobTitle: data.jobTitle || 'Software Engineer',
+              role: data.role || 'staff',
+              avatar: data.avatar || DEFAULT_AVATAR,
+              hourlyRate: Number(priv.hourlyRate ?? DEFAULT_HOURLY_RATE)
             });
           } else {
             // Fallback if document doesn't exist
@@ -43,8 +51,10 @@ export const AuthProvider = ({ children }) => {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               name: displayName,
-              role: 'Software Engineer',
-              avatar: DEFAULT_AVATAR
+              jobTitle: 'Software Engineer',
+              role: 'staff',
+              avatar: DEFAULT_AVATAR,
+              hourlyRate: DEFAULT_HOURLY_RATE
             });
           }
         } catch (e) {
@@ -54,8 +64,10 @@ export const AuthProvider = ({ children }) => {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             name: displayName,
-            role: 'Software Engineer',
-            avatar: DEFAULT_AVATAR
+            jobTitle: 'Software Engineer',
+            role: 'staff',
+            avatar: DEFAULT_AVATAR,
+            hourlyRate: DEFAULT_HOURLY_RATE
           });
         }
         setIsAuthenticated(true);
@@ -84,21 +96,28 @@ export const AuthProvider = ({ children }) => {
       // Update Auth profile display name
       await updateProfile(userCredential.user, { displayName: name });
       
+      const uid = userCredential.user.uid;
+
       const userData = {
         name: name,
         email: email,
-        role: 'Software Engineer',
+        jobTitle: 'Software Engineer',
+        role: 'staff',
         avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100',
         createdAt: new Date().toISOString()
       };
 
-      // Save user profile details to Firestore users collection
-      await setDoc(doc(db, 'users', userCredential.user.uid), userData);
+      // Public profile and private pay data are written separately
+      await Promise.all([
+        setDoc(doc(db, 'users', uid), userData),
+        setDoc(doc(db, 'userPrivate', uid), { hourlyRate: DEFAULT_HOURLY_RATE })
+      ]);
 
       setUser({
-        uid: userCredential.user.uid,
+        uid: uid,
         email: email,
-        ...userData
+        ...userData,
+        hourlyRate: DEFAULT_HOURLY_RATE
       });
       setIsAuthenticated(true);
       return true;
@@ -119,8 +138,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Reflect a newly uploaded avatar immediately, rather than waiting for re-login
+  const updateAvatar = (avatar) => {
+    setUser(prev => (prev ? { ...prev, avatar } : prev));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, register, logout, updateAvatar }}>
       {children}
     </AuthContext.Provider>
   );

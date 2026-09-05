@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase';
-import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { exportSalarySheetToExcel } from '../../utils/reportUtils';
+import AvatarUpload from '../Layout/AvatarUpload';
+import { computeMonthStats } from '../../utils/computeStats';
+import { format } from 'date-fns';
 import {
   Clock,
   LogOut,
@@ -19,10 +22,12 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100';
-
 const Dashboard = () => {
   const { user, logout } = useAuth();
+
+  // Pay rate now comes from userPrivate/{uid} via AuthContext; the literal is
+  // only a fallback for the first render before the profile resolves.
+  const hourlyRate = user?.hourlyRate ?? 240;
 
   // Navigation states
   const today = new Date();
@@ -393,7 +398,7 @@ const Dashboard = () => {
       
       // Hours formatted as standard decimal placeholder to match the spreadsheet format (e.g. 9h 30m -> 9.30)
       const hoursDecimal = diffH + (diffM / 100);
-      const salaryVal = hoursDecimal * 240;
+      const salaryVal = hoursDecimal * hourlyRate;
       
       return {
         hours: hoursDecimal.toFixed(2),
@@ -457,6 +462,7 @@ const Dashboard = () => {
 
     try {
       await setDoc(doc(db, 'attendance', docName), payload);
+      await publishStats(payload);
       setIsSaving(false);
       setSelectedDay(null);
       setAlert({
@@ -473,6 +479,32 @@ const Dashboard = () => {
     }
   };
 
+  // Publish the shareable, non-sensitive slice of this month's attendance.
+  // Always recomputed from the full record set, so a retry or a double save
+  // cannot inflate the counts. Never includes times, hours or salary.
+  const publishStats = async (savedRecord) => {
+    if (!user?.uid) return;
+    const monthKey = format(new Date(), 'yyyy-MM');
+    const records = [
+      ...firestoreLogs.filter(r => r.date !== savedRecord.date),
+      savedRecord
+    ];
+    const stats = computeMonthStats(records, monthKey);
+
+    try {
+      await setDoc(doc(db, 'publicStats', user.uid), {
+        uid: user.uid,
+        name: user.name,
+        month: monthKey,
+        ...stats,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      // Never let a stats failure surface as a failed attendance save
+      console.error('Failed to publish public stats:', error);
+    }
+  };
+
   // Delete attendance document
   const handleDelete = async () => {
     if (!selectedDay) return;
@@ -480,6 +512,7 @@ const Dashboard = () => {
     const docId = selectedDay.docId || `${user.uid}_${selectedDay.dateKey}`;
     try {
       await deleteDoc(doc(db, 'attendance', docId));
+      await publishStats({ date: selectedDay.dateKey, status: 'Absent', hours: '0.00' });
       setIsSaving(false);
       setSelectedDay(null);
       setAlert({
@@ -502,8 +535,7 @@ const Dashboard = () => {
   const totalHoursDecimal = daysList.reduce((acc, d) => acc + (d.hours !== '0.00' ? parseFloat(d.hours) : 0), 0).toFixed(2);
   const totalSalary = daysList.reduce((acc, d) => acc + d.salary, 0);
   
-  const hourlyRate = 240;
-  const salaryGoal = 38400; // goal: 160 hrs * 240 Rs.
+  const salaryGoal = 160 * hourlyRate; // goal: 160 hrs at the user's rate
   const progressPercent = Math.min((totalSalary / salaryGoal) * 100, 100);
 
   // Month navigation
@@ -575,8 +607,9 @@ const Dashboard = () => {
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
             <h4 className="text-xs font-bold text-slate-200">{user?.name}</h4>
-            <p className="text-[10px] text-slate-500 font-light tracking-wide uppercase">{user?.role}</p>
+            <p className="text-[10px] text-slate-500 font-light tracking-wide uppercase">{user?.jobTitle}</p>
           </div>
+          <AvatarUpload size={36} />
           <button
             onClick={logout}
             className="p-2 text-slate-500 hover:text-rose-400 hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"

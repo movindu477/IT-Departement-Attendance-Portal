@@ -1,17 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users collection - users can read/write their own data only
+    // Public staff profile - readable by any signed-in staff member (team page),
+    // writable only by its owner. Must never hold pay data.
     match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Private staff data (hourlyRate) - owner only, never readable by the team
+    match /userPrivate/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // Attendance collection - users can read/create/update/delete their own attendance
+
+    // Attendance collection - each record carries a per-day salary figure,
+    // so reads are restricted to the owner, matching update/delete
     match /attendance/{attendanceId} {
-      allow read, create: if request.auth != null;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
-    
+
+    // Shareable attendance summary - readable by any signed-in staff member,
+    // writable only by its owner. Counts only: no times, hours or salary.
+    match /publicStats/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Monthly reports collection - users can read their own reports
     match /monthlyReports/{reportId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;

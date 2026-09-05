@@ -1,9 +1,15 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { usePresence } from '../../hooks/usePresence';
 
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+
+  // Single presence writer for the whole authenticated tree — calling this
+  // per-page would register redundant listeners. Must sit above the early
+  // returns below so hook order stays stable across renders.
+  usePresence();
 
   if (loading) {
     return (

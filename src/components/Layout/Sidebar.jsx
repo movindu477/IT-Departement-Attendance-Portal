@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Clock, Calendar, Users, Activity, Shield, FileText, ChevronDown } from 'lucide-react';
+import AvatarUpload from './AvatarUpload';
 
 const Sidebar = ({ isCheckedIn, isOnBreak }) => {
   const { user } = useAuth();
@@ -32,14 +33,10 @@ const Sidebar = ({ isCheckedIn, isOnBreak }) => {
         {/* User Profile Summary */}
         <div className="p-6 border-b border-slate-900 bg-slate-950/30">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <img
-                src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100'}
-                alt="User Avatar"
-                className="w-12 h-12 rounded-xl object-cover ring-2 ring-violet-500/30"
-              />
-              <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-950 ${isCheckedIn ? (isOnBreak ? 'bg-amber-500' : 'bg-emerald-500') : 'bg-slate-500'}`} />
-            </div>
+            <AvatarUpload
+              size={48}
+              status={isCheckedIn ? (isOnBreak ? 'break' : 'active') : 'offline'}
+            />
             <div>
               <h3 className="font-semibold text-white text-sm truncate max-w-[130px]">{user?.name || 'Marcus Vance'}</h3>
               <p className="text-xs text-slate-400 truncate max-w-[130px]">{user?.role || 'Senior UI Architect'}</p>
