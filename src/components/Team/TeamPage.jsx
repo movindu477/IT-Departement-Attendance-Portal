@@ -12,7 +12,7 @@ const MemberCard = ({ member, isSelf }) => {
   return (
     <div className={`p-5 rounded-3xl border transition-all ${
       member.isOnline
-        ? 'bg-canvas border-emerald-500/30 shadow-[0_4px_20px_rgba(16,185,129,0.06)]'
+        ? 'bg-canvas border-emerald-200 shadow-[0_4px_20px_rgba(16,185,129,0.06)]'
         : 'bg-canvas border-line/80 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)]'
     }`}>
       <div className="flex items-start gap-4">
@@ -26,7 +26,7 @@ const MemberCard = ({ member, isSelf }) => {
                                bg-[#111827] text-white">You</span>
             )}
           </div>
-          <p className={`text-[11px] mt-1 font-semibold ${member.isOnline ? 'text-emerald-400' : 'text-muted'}`}>
+          <p className={`text-[11px] mt-1 font-semibold ${member.isOnline ? 'text-emerald-600' : 'text-muted'}`}>
             {member.lastSeenLabel ?? 'Never seen'}
           </p>
         </div>

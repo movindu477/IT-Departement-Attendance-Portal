@@ -7,18 +7,18 @@ import { CheckCircle2, Clock3, DollarSign } from 'lucide-react';
  * navy pill at the bottom for the supporting metric.
  */
 const Tile = ({ tint, ink, label, value, icon: Icon, footer }) => (
-  <div className={`${tint} rounded-3xl p-5 relative overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.03)] border border-line transition-all hover:shadow-md`}>
+  <div className={`${tint} rounded-3xl p-5 relative overflow-hidden border-2 border-slate-900 shadow-[0_5px_0_0_#0f172a,0_12px_24px_rgba(0,0,0,0.06)] hover:shadow-[0_7px_0_0_#0f172a] transition-all`}>
     <div className="flex items-center gap-2 mb-3">
-      <span className="w-7 h-7 rounded-xl bg-chip flex items-center justify-center shrink-0 shadow-xs">
+      <span className="w-7 h-7 rounded-xl bg-slate-900 flex items-center justify-center shrink-0 shadow-xs">
         <Icon className="w-3.5 h-3.5 text-white" />
       </span>
       <span className={`text-[11px] font-bold tracking-tight ${ink}`}>{label}</span>
     </div>
 
-    <p className="text-2xl font-extrabold text-ink tracking-tight truncate">{value}</p>
+    <p className="text-2xl font-extrabold text-slate-900 tracking-tight truncate">{value}</p>
 
     {footer && (
-      <div className="mt-3.5 inline-flex items-center gap-1.5 bg-chip text-white rounded-full px-3 py-1 text-[10px] font-semibold shadow-xs">
+      <div className="mt-3.5 inline-flex items-center gap-1.5 bg-slate-900 text-white rounded-full px-3 py-1 text-[10px] font-semibold shadow-xs">
         {footer}
       </div>
     )}
@@ -31,7 +31,7 @@ const StatWidgets = ({
   totalSalary,
   workingDaysElapsed,
 }) => (
-  <div className="space-y-4">
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
     <Tile
       tint="bg-lav"
       ink="text-lav-ink"

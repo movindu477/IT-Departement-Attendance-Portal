@@ -21,9 +21,9 @@ const COLORS = {
   face: 0x0b1f4b,       // face plate
   eye: 0xffffff,
   glow: 0x60a5fa,
-  grid: 0x3d4b6b,
-  gridSub: 0x232c42,
-  fog: 0x101623,
+  grid: 0x2f3a52,
+  gridSub: 0x1b2233,
+  fog: 0x000000,
 };
 
 const MAX_YAW = 0.62;    // ~35deg
@@ -67,7 +67,7 @@ export function createRobotScene(container, { reducedMotion = false } = {}) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(0x000000, 0);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 1.1;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -78,11 +78,11 @@ export function createRobotScene(container, { reducedMotion = false } = {}) {
 
   // ------------------------------------------------------------------- scene
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(COLORS.fog, 5.0, 12.0); // matches the dark card behind the canvas
+  scene.fog = new THREE.Fog(COLORS.fog, 5.0, 12.0); // matches the black card behind the canvas
 
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 60);
-  camera.position.set(0, 1.42, 4.3);
-  camera.lookAt(0, 1.18, 0);
+  camera.position.set(0, 1.30, 3.9);
+  camera.lookAt(0, 1.16, 0);
 
   // Image-based lighting: a glossy blue shell needs real reflections to read as
   // moulded plastic rather than flat colour.
@@ -90,14 +90,14 @@ export function createRobotScene(container, { reducedMotion = false } = {}) {
   const roomEnv = new RoomEnvironment();
   const envRT = pmrem.fromScene(roomEnv, 0.04);
   scene.environment = envRT.texture;
-  scene.environmentIntensity = 0.4;
+  scene.environmentIntensity = 0.35;
   roomEnv.traverse((o) => {
     if (o.isMesh) { o.geometry?.dispose?.(); o.material?.dispose?.(); }
   });
   pmrem.dispose();
 
   // ------------------------------------------------------------------ lights
-  scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x141a28, 0.5));
+  scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x0a0a0a, 0.45));
 
   const key = new THREE.DirectionalLight(0xffffff, 2.0);
   key.position.set(2.2, 4.2, 3.4);
@@ -114,7 +114,7 @@ export function createRobotScene(container, { reducedMotion = false } = {}) {
   key.shadow.radius = 4;
   scene.add(key);
 
-  const rim = new THREE.DirectionalLight(COLORS.glow, 2.0);
+  const rim = new THREE.DirectionalLight(COLORS.glow, 2.2);
   rim.position.set(-3.2, 1.8, -2.4);
   scene.add(rim);
 
@@ -126,12 +126,12 @@ export function createRobotScene(container, { reducedMotion = false } = {}) {
   const GRID_STEP = 0.5;
   const grid = new THREE.GridHelper(20, 40, COLORS.grid, COLORS.gridSub);
   grid.material.transparent = true;
-  grid.material.opacity = 0.65;
+  grid.material.opacity = 0.7;
   scene.add(grid);
 
   const shadowCatcher = new THREE.Mesh(
     new THREE.PlaneGeometry(12, 12),
-    new THREE.ShadowMaterial({ opacity: 0.45 })
+    new THREE.ShadowMaterial({ opacity: 0.5 })
   );
   shadowCatcher.rotation.x = -Math.PI / 2;
   shadowCatcher.position.y = 0.001;

@@ -29,47 +29,49 @@
 }
 
 /* ------------------------------------------------------------------
-   Dark palette. Structure mirrors the EduRashi reference — tinted stat
-   tiles, a raised chip, violet brand and an orange accent — inverted onto
-   a dark ground with light ink.
+   Dark clinical-dashboard palette: black canvas, near-black cards,
+   a mint accent for positive state and a blue accent for scheduled /
+   pending state. White ink, grey secondary.
    ------------------------------------------------------------------ */
 @theme {
   /* Surfaces */
-  --color-canvas: #0b0f19;
-  --color-surface: #141a28;
-  --color-subtle: #1b2233;
-  --color-line: #263045;
-  --color-line-strong: #34405c;
+  --color-canvas: #000000;
+  --color-surface: #121212;
+  --color-raised: #1c1c1c;
+  --color-subtle: #191919;
+  --color-line: #262626;
+  --color-line-strong: #333333;
 
   /* Text */
-  --color-ink: #f8fafc;
-  --color-ink-soft: #b6c0d4;
-  --color-muted: #7d889f;
+  --color-ink: #ffffff;
+  --color-ink-soft: #a3a3a3;
+  --color-muted: #6f6f6f;
 
-  /* Brand + accents */
-  --color-brand: #7a5af8;
-  --color-brand-soft: #241f3d;
-  --color-brand-ink: #a78bfa;
-  --color-accent: #f0562d;
-  --color-accent-soft: #2e1b16;
+  /* Mint accent - positive, present, paid */
+  --color-mint: #a7f3c8;
+  --color-mint-deep: #7ee8a5;
+  --color-mint-ink: #06301b;
 
-  /* Tinted stat tiles - deep fills with a light ink on top */
-  --color-lav: #241f3d;
-  --color-lav-ink: #c4b5fd;
-  --color-sky: #14273c;
-  --color-sky-ink: #93c5fd;
-  --color-mint: #12291d;
-  --color-mint-ink: #6ee7b7;
-  --color-peach: #2e1b16;
-  --color-peach-ink: #fdba74;
+  /* Blue accent - scheduled, pending, in-progress */
+  --color-azure: #4a90ff;
+  --color-azure-soft: #1e3a6b;
 
-  /* Chip must sit ABOVE the tinted tiles so its white text stays readable */
-  --color-chip: #2b3350;
-  --color-panel: #0b0f19;
+  /* Metric tile fills. Ink is chosen by luminance: the purple is dark
+     enough for white text, the cyan and green are bright and need near-black. */
+  --color-tone-1: #a629f0;
+  --color-tone-1-ink: #ffffff;
+  --color-tone-2: #1ebbe6;
+  --color-tone-2-ink: #04222b;
+  --color-tone-3: #1ee661;
+  --color-tone-3-ink: #032b13;
+
+  /* Support */
+  --color-amber: #fbbf24;
+  --color-danger: #f87171;
 
   /* Status */
-  --color-online: #22c55e;
-  --color-offline: #4a5468;
+  --color-online: #7ee8a5;
+  --color-offline: #4a4a4a;
 }
 
 :root {
@@ -80,8 +82,8 @@
 body {
   font-family: 'Poppins', sans-serif;
   font-weight: 300;
-  background-color: #0b0f19;
-  color: #f8fafc;
+  background-color: #000000;
+  color: #ffffff;
   margin: 0;
   padding: 0;
   overflow: hidden; /* Prevent double scrollbars at page level */
@@ -96,11 +98,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #34405c;
+  background: #333333;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #47536f;
+  background: #454545;
 }
 
 @keyframes fadeInUp {
@@ -137,33 +139,28 @@ body {
   min-height: 0;
 }
 
-/* Digital progress bars: width eases, and the sheen sweeps on value change */
+/* Bars and chart segments ease into place */
 .digital-bar {
   transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-  overflow: hidden;
 }
-.digital-bar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
-  transform: translateX(-100%);
-  animation: barSheen 2.4s ease-in-out infinite;
-}
-@keyframes barSheen {
-  0%   { transform: translateX(-100%); }
-  60%  { transform: translateX(100%); }
-  100% { transform: translateX(100%); }
+/* Carousel: a slow, eased slide rather than an instant page swap */
+.carousel-track {
+  transition: transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
-/* Card elevation shadow */
+.chart-grow {
+  transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Card elevation on a black ground: a hairline plus a soft lift */
 .card-soft {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 10px 30px rgba(0, 0, 0, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .record-collapse,
-  .digital-bar { transition: none; }
-  .digital-bar::after { animation: none; }
+  .digital-bar,
+  .carousel-track,
+  .chart-grow { transition: none; }
 }

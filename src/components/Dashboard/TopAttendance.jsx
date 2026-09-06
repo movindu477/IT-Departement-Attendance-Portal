@@ -1,65 +1,138 @@
-import React from 'react';
-import { Trophy, AlertCircle } from 'lucide-react';
-import Avatar from '../Layout/Avatar';
+import React, { useState } from 'react';
+import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import MemberCard from './MemberCard';
 
-const medal = ['text-accent', 'text-ink-soft', 'text-orange-400'];
+const PER_PAGE = 3;
 
-const TopAttendance = ({ ranked, loading, error, currentUid }) => (
-  <div className="bg-surface border border-line/80 rounded-3xl p-5 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col min-h-0">
-    <h3 className="text-sm font-bold text-ink tracking-tight flex items-center gap-2 mb-4 shrink-0">
-      <Trophy className="w-4 h-4 text-accent" />
-      Top Attendance
-    </h3>
+/**
+ * Ranked roster as a sliding carousel. Every page is rendered inside one track
+ * and the track is translated, so paging is a slow eased slide (720ms, see
+ * .carousel-track) rather than an instant swap of card contents.
+ */
+const TopAttendance = ({
+  ranked,
+  loading,
+  error,
+  currentUid,
+  workingDaysElapsed = 0,
+  monthLabel = '',
+}) => {
+  const [page, setPage] = useState(0);
 
-    {loading && (
-      <div className="space-y-3">
-        {[0, 1, 2, 3].map(i => (
-          <div key={i} className="flex items-center gap-3 animate-pulse">
-            <div className="w-8 h-8 rounded-xl bg-line" />
-            <div className="flex-1 space-y-1.5">
-              <div className="h-2.5 w-24 rounded bg-line" />
-              <div className="h-2 w-16 rounded bg-line" />
-            </div>
-          </div>
-        ))}
-      </div>
-    )}
+  const pageCount = Math.max(1, Math.ceil(ranked.length / PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
 
-    {error && !loading && (
-      <p className="text-xs text-accent flex items-center gap-2">
-        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-        {error.message}
-      </p>
-    )}
+  const pages = Array.from({ length: pageCount }, (_, i) =>
+    ranked.slice(i * PER_PAGE, i * PER_PAGE + PER_PAGE)
+  );
 
-    {!loading && !error && (
-      <ul className="space-y-1.5 overflow-y-auto -mr-2 pr-2">
-        {ranked.slice(0, 6).map((m, i) => (
-          <li
-            key={m.uid}
-            className={`flex items-center gap-3 py-2 px-2.5 rounded-2xl transition-all ${m.uid === currentUid ? 'bg-brand-soft/80 border border-brand/20 shadow-xs' : 'hover:bg-subtle'
-              }`}
-          >
-            <span className={`w-4 text-[11px] font-bold tabular-nums shrink-0 ${medal[i] ?? 'text-muted'}`}>
-              {i + 1}
+  return (
+    <div className="bg-surface border border-line rounded-3xl p-5">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h3 className="text-base font-semibold text-ink tracking-tight">Top attendance</h3>
+
+        {!loading && !error && ranked.length > PER_PAGE && (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              aria-label="Previous page"
+              className="w-8 h-8 rounded-full bg-raised border border-line text-ink
+                         flex items-center justify-center hover:bg-line transition-colors
+                         disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-[11px] text-muted tabular-nums px-0.5">
+              {safePage + 1}/{pageCount}
             </span>
-            <Avatar user={m} size={34} status={m.isOnline ? 'active' : null} />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-ink truncate">{m.name || 'Unnamed'}</p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-sm font-bold text-ink tabular-nums leading-none">{m.stats.daysPresent}</p>
-              <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">days</p>
-            </div>
-          </li>
-        ))}
-
-        {ranked.length === 0 && (
-          <li className="text-xs text-muted py-4 text-center">No attendance published yet.</li>
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+              disabled={safePage >= pageCount - 1}
+              aria-label="Next page"
+              className="w-8 h-8 rounded-full bg-raised border border-line text-ink
+                         flex items-center justify-center hover:bg-line transition-colors
+                         disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         )}
-      </ul>
-    )}
-  </div>
-);
+      </div>
+
+      {loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="flex flex-col items-center animate-pulse">
+              <div className="w-16 h-16 rounded-full bg-raised" />
+              <div className="h-3 w-24 rounded bg-raised mt-3" />
+              <div className="h-2.5 w-20 rounded bg-raised mt-2" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {error && !loading && (
+        <p className="text-xs text-danger flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error.message}
+        </p>
+      )}
+
+      {!loading && !error && ranked.length > 0 && (
+        <div className="overflow-hidden">
+          <div
+            className="carousel-track flex"
+            style={{ transform: `translateX(-${safePage * 100}%)` }}
+          >
+            {pages.map((group, pageIdx) => (
+              <div
+                key={pageIdx}
+                className="w-full shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-5"
+                aria-hidden={pageIdx !== safePage}
+              >
+                {group.map((m, i) => {
+                  const rank = pageIdx * PER_PAGE + i + 1;
+                  const days = m.stats.daysPresent;
+                  const pct = workingDaysElapsed > 0
+                    ? Math.round((days / workingDaysElapsed) * 100)
+                    : 0;
+
+                  return (
+                    <MemberCard
+                      key={m.uid}
+                      member={m}
+                      isSelf={m.uid === currentUid}
+                      badge={m.isOnline ? 'Active' : `#${rank}`}
+                      badgeTone={m.isOnline ? 'mint' : 'azure'}
+                      dateLine={m.stats.lastMarked ? `Last logged ${m.stats.lastMarked}` : 'No logs yet'}
+                      note={
+                        workingDaysElapsed > 0
+                          ? `${days} of ${workingDaysElapsed} working days present — ${pct}%${monthLabel ? ` in ${monthLabel}` : ''}.`
+                          : `${days} day${days === 1 ? '' : 's'} present so far.`
+                      }
+                    />
+                  );
+                })}
+
+                {/* Keep the last page the same width as a full one */}
+                {group.length < PER_PAGE &&
+                  Array.from({ length: PER_PAGE - group.length }).map((_, k) => (
+                    <div key={`pad-${k}`} aria-hidden="true" />
+                  ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && ranked.length === 0 && (
+        <p className="text-xs text-muted py-8 text-center">No attendance published yet.</p>
+      )}
+    </div>
+  );
+};
 
 export default TopAttendance;

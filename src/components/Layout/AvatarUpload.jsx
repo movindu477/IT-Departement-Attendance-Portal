@@ -54,34 +54,40 @@ const AvatarUpload = ({ size = 48, status = null }) => {
         />
       </label>
 
-      {/* Toast Alert Notification */}
+      {/* Toast Alert Notification (Bottom Left Corner) */}
       {alert && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] w-[90%] max-w-md animate-fade-in-up">
-          <div className={`flex items-start gap-3 p-4 rounded-xl shadow-xl border ${
-            alert.type === 'error'
-              ? 'bg-accent-soft border-l-4 border-accent border-y-accent/20 border-r-accent/20 text-ink card-soft'
-              : 'bg-mint border-l-4 border-brand border-y-brand/20 border-r-brand/20 text-ink card-soft'
-          }`}>
-            {alert.type === 'error' ? (
-              <AlertCircle className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-            ) : (
-              <CheckCircle2 className="w-5 h-5 text-brand shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1 text-left">
-              <h4 className={`font-semibold text-xs uppercase tracking-wider mb-0.5 ${alert.type === 'error' ? 'text-accent' : 'text-brand'}`}>
-                {alert.type === 'error' ? 'Error' : 'Success'}
-              </h4>
-              <p className="text-xs text-ink/90 font-light leading-relaxed">{alert.message}</p>
+        <div className="fixed bottom-6 left-6 z-[999] w-[calc(100%-3rem)] max-w-sm sm:max-w-md animate-slide-in-bottom-left">
+          <div className={`flex items-start gap-3.5 p-4 rounded-2xl border-2 border-slate-900 shadow-[0_5px_0_0_#0f172a,0_12px_24px_rgba(0,0,0,0.1)] ${alert.type === 'error'
+            ? 'bg-rose-50 text-slate-900'
+            : 'bg-emerald-50 text-slate-900'
+            }`}>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 border ${alert.type === 'error'
+              ? 'bg-rose-500 text-white border-rose-600'
+              : 'bg-[#b4f481] text-slate-950 border-[#9fe466]'
+              }`}>
+              {alert.type === 'error' ? (
+                <AlertCircle className="w-4 h-4" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 font-bold" />
+              )}
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${alert.type === 'error'
+                  ? 'bg-rose-200/80 text-rose-800'
+                  : 'bg-emerald-200/80 text-emerald-900'
+                  }`}>
+                  {alert.type === 'error' ? 'Notice' : 'Success'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-800 font-medium leading-relaxed break-words">{alert.message}</p>
             </div>
             <button
               onClick={() => setAlert(null)}
-              className={`p-1 rounded-lg transition-colors cursor-pointer ${
-                alert.type === 'error'
-                  ? 'text-accent hover:bg-accent-soft hover:text-accent'
-                  : 'text-brand hover:bg-brand/10 hover:text-brand-ink'
-              }`}
+              className="p-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-black/5 transition-colors cursor-pointer shrink-0"
+              title="Dismiss"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>

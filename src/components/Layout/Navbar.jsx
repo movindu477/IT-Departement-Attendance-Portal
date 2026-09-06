@@ -25,7 +25,7 @@ const Navbar = ({ title, currentDate }) => {
         {/* Notification Bell */}
         <button className="relative p-2 text-ink-soft hover:text-ink hover:bg-subtle rounded-lg transition-colors duration-200">
           <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-violet-500/100 animate-ping" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-violet-500 animate-ping" />
         </button>
 
         {/* Logout Icon */}

@@ -155,7 +155,7 @@ const MonthlyReport = ({ logs }) => {
             <span className="text-xs text-ink-soft font-medium">Total Monthly Hours</span>
             <span className="text-2xl font-bold text-brand block">{totalWorkedHours}h</span>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-violet-500/100/10 flex items-center justify-center text-brand">
+          <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center text-brand">
             <CalendarIcon className="w-5 h-5" />
           </div>
         </div>
@@ -187,7 +187,7 @@ const MonthlyReport = ({ logs }) => {
             } else if (cell.status === 'Late') {
               statusColors = 'bg-accent/5 border-amber-500/20 hover:border-amber-500/50 text-accent';
             } else if (cell.status === 'Absent') {
-              statusColors = 'bg-rose-500/100/5 border-rose-500/20 hover:border-rose-500/50 text-accent';
+              statusColors = 'bg-rose-500/5 border-rose-500/20 hover:border-rose-500/50 text-accent';
             } else if (cell.status === 'Weekend') {
               statusColors = 'bg-subtle/25 border-line/40 text-muted';
             }
@@ -259,7 +259,7 @@ const MonthlyReport = ({ logs }) => {
             <span className="text-ink-soft font-medium">Late</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500/100/25 border border-rose-500/50" />
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-100 border border-rose-500/50" />
             <span className="text-ink-soft font-medium">Absent / Leave</span>
           </div>
           <div className="flex items-center gap-1.5">

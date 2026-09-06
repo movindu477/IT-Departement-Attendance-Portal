@@ -171,16 +171,10 @@ export const exportSalarySheetToExcel = (daysList = [], monthName, year) => {
     `</row>`;
   rowIndex++;
 
-  // Row 2: Subtitle
-  sheetRowsXml += `<row r="${rowIndex}">` +
-    addCell('A', rowIndex, `Generated on ${new Date().toLocaleDateString()}`) +
-    `</row>`;
+  // Empty spacer row
   rowIndex++;
 
-  // Row 3: Empty spacer row
-  rowIndex++;
-
-  // Row 4: Column Headers (Date, IN, OUT, Reason / Status)
+  // Column headers
   sheetRowsXml += `<row r="${rowIndex}">` +
     addCell('A', rowIndex, 'Date') +
     addCell('B', rowIndex, 'IN') +
@@ -188,8 +182,6 @@ export const exportSalarySheetToExcel = (daysList = [], monthName, year) => {
     addCell('D', rowIndex, 'Reason / Status') +
     `</row>`;
   rowIndex++;
-
-  let workedCount = 0;
 
   // Data rows
   daysList.forEach((day) => {
@@ -208,9 +200,6 @@ export const exportSalarySheetToExcel = (daysList = [], monthName, year) => {
     } else {
       inVal = day.checkIn || '—';
       outVal = day.checkOut || '—';
-      if (day.checkIn || day.hours !== '0.00' || day.status === 'Present') {
-        workedCount++;
-      }
       reasonVal = day.reason || (day.status === 'Absent' ? 'Absent' : 'Present');
     }
 
@@ -223,16 +212,6 @@ export const exportSalarySheetToExcel = (daysList = [], monthName, year) => {
     rowIndex++;
   });
 
-  // Empty spacer row before summary
-  rowIndex++;
-
-  // Summary Row
-  sheetRowsXml += `<row r="${rowIndex}">` +
-    addCell('A', rowIndex, 'TOTAL') +
-    addCell('B', rowIndex, '—') +
-    addCell('C', rowIndex, '—') +
-    addCell('D', rowIndex, `Total Worked: ${workedCount} Days`) +
-    `</row>`;
 
   // Standard OpenXML definitions
   const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

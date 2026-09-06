@@ -12,7 +12,7 @@ const StatsCard = ({ weeklyHours = 32.5, targetHours = 40.0 }) => {
       <div className="absolute -top-12 -left-12 w-40 h-40 bg-indigo-600/10 rounded-full blur-[60px] -z-10" />
       
       <div>
-        <span className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Weekly Hours</span>
+        <span className="text-xs font-semibold text-indigo-600 uppercase tracking-widest">Weekly Hours</span>
         <h3 className="text-lg font-bold text-ink mt-1">Weekly Target</h3>
       </div>
 
@@ -48,7 +48,7 @@ const StatsCard = ({ weeklyHours = 32.5, targetHours = 40.0 }) => {
           <TrendingUp className="w-3.5 h-3.5 text-mint-ink" />
           <span>On Track</span>
         </div>
-        <span className="text-indigo-400 font-bold">{percentage.toFixed(2)}% Complete</span>
+        <span className="text-indigo-600 font-bold">{percentage.toFixed(2)}% Complete</span>
       </div>
     </div>
   );

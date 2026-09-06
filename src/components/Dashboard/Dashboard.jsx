@@ -5,15 +5,22 @@ import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { exportSalarySheetToExcel } from '../../utils/reportUtils';
 import AvatarUpload from '../Layout/AvatarUpload';
-import logo from '../../assets/images/logo.png';
-import StatWidgets from './StatWidgets';
+import StatCard from './StatCard';
 import TopAttendance from './TopAttendance';
-import TeamStatus from './TeamStatus';
+import HoursChart from './HoursChart';
+import MonthProgress from './MonthProgress';
 // three.js is ~500 kB; loading it lazily keeps it out of the first paint
 const RobotPanel = lazy(() => import('./RobotPanel'));
 import { useTeam } from '../../hooks/useTeam';
 import { computeMonthStats } from '../../utils/computeStats';
-import { format } from 'date-fns';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+} from 'date-fns';
 import {
   Clock,
   LogOut,
@@ -359,14 +366,7 @@ const Dashboard = () => {
     return new Date(year, month + 1, 0).getDate();
   };
 
-  const getStartDayOfWeek = (month, year) => {
-    // Convert to Monday-first convention (0 is Mon, 6 is Sun) matching the modern UI reference
-    const day = new Date(year, month, 1).getDay();
-    return (day + 6) % 7;
-  };
-
   const daysCount = getDaysInMonth(currentMonth, currentYear);
-  const startOffset = getStartDayOfWeek(currentMonth, currentYear);
 
   // Compile full days list for the month (including week labels and weekend marks)
   const compileDaysList = () => {
@@ -390,7 +390,9 @@ const Dashboard = () => {
         dateNum: d,
         dayOfWeek: dayOfWeekName,
         isWeekend,
-        status: isWeekend ? 'Weekend' : (matched ? matched.status || 'Present' : 'Absent'),
+        // A logged record always wins; the weekend label is only the default
+        // for a day with nothing recorded against it.
+        status: matched ? (matched.status || 'Present') : (isWeekend ? 'Weekend' : 'Absent'),
         checkIn: matched?.checkIn || '',
         checkOut: matched?.checkOut || '',
         hours: matched?.hours || '0.00',
@@ -577,7 +579,8 @@ const Dashboard = () => {
 
   // Working days in the displayed month, and how many have already passed.
   // For a month other than the live one every working day counts as elapsed.
-  const workingDays = daysList.filter(d => !d.isWeekend);
+  // Weekdays, plus any weekend day the user actually logged.
+  const workingDays = daysList.filter(d => !d.isWeekend || d.status === 'Present');
   const workingDaysInMonth = workingDays.length;
   const workingDaysElapsed = workingDays.filter(
     d => !realDateKey || d.dateKey <= realDateKey
@@ -629,118 +632,173 @@ const Dashboard = () => {
     }
   };
 
+  // ---- Week helpers -------------------------------------------------------
+  const dayKey = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const mondayOf = (ref) => {
+    const dow = ref.getDay();                 // 0 Sun .. 6 Sat
+    const backToMonday = dow === 0 ? -6 : 1 - dow;
+    return new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() + backToMonday);
+  };
+
+  const buildWeek = (start) =>
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((label, i) => {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const match = firestoreLogs.find(l => l.date === dayKey(d));
+      const hours = match ? (parseFloat(match.hours) || 0) : 0;
+      return { label, value: hours, regular: Math.min(hours, 8), overtime: Math.max(hours - 8, 0) };
+    });
+
+  const nowRef = new Date();
+  const thisMonday = mondayOf(nowRef);
+  const lastMonday = new Date(thisMonday.getFullYear(), thisMonday.getMonth(), thisMonday.getDate() - 7);
+
+  const weekData = buildWeek(thisMonday);
+  const lastWeekData = buildWeek(lastMonday);
+  const weekTotal = weekData.reduce((a, d) => a + d.value, 0);
+  const lastWeekTotal = lastWeekData.reduce((a, d) => a + d.value, 0);
+  const todayLabel = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][nowRef.getDay()];
+
+  // ---- Month pace ---------------------------------------------------------
+  const monthLogs = firestoreLogs.filter(l => typeof l.date === 'string' && l.date.startsWith(viewMonthKey));
+
+  const overtimeHours = monthLogs.reduce(
+    (a, l) => a + Math.max((parseFloat(l.hours) || 0) - 8, 0), 0
+  );
+
+  const avgDayLength = totalWorkedDays > 0
+    ? parseFloat(totalHoursDecimal) / totalWorkedDays
+    : 0;
+
+  // Mean check-in across the month, as a punctuality read-out.
+  const avgStartTime = (() => {
+    const mins = monthLogs
+      .filter(l => typeof l.checkIn === 'string' && l.checkIn.includes(':'))
+      .map(l => {
+        const [h, m] = l.checkIn.split(':').map(Number);
+        return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+      })
+      .filter(v => v !== null);
+    if (mins.length === 0) return null;
+    const avg = Math.round(mins.reduce((a, b) => a + b, 0) / mins.length);
+    return `${String(Math.floor(avg / 60)).padStart(2, '0')}:${String(avg % 60).padStart(2, '0')}`;
+  })();
+
+  const headerDate = nowRef.toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', weekday: 'long',
+  });
+
+  // The calendar grid runs Monday-first, while getDay() is Sunday-first.
+  // Calendar grid built with date-fns rather than hand-rolled offsets. The
+  // previous code converted the first-of-month weekday twice - once in
+  // getStartDayOfWeek and again at render - which shifted every date one
+  // column. eachDayOfInterval over whole weeks cannot drift.
+  const monthStart = startOfMonth(new Date(currentYear, currentMonth, 1));
+  const calendarCells = eachDayOfInterval({
+    start: startOfWeek(monthStart, { weekStartsOn: 0 }),   // 0 = Sunday
+    end: endOfWeek(endOfMonth(monthStart), { weekStartsOn: 0 }),
+  });
+
+  // Look-up so a grid cell can find its attendance row by date key.
+  const dayByKey = Object.fromEntries(daysList.map(d => [d.dateKey, d]));
+
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-canvas text-ink">
 
-      {/* Toast Alert Notification */}
+      {/* Toast */}
       {alert && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] w-[90%] max-w-md animate-fade-in-up">
-          <div className={`flex items-start gap-3 p-4 rounded-xl shadow-xl border ${alert.type === 'error'
-            ? 'bg-accent-soft border-l-4 border-accent border-y-accent/20 border-r-accent/20 text-ink card-soft'
-            : 'bg-mint border-l-4 border-brand border-y-brand/20 border-r-brand/20 text-ink card-soft'
-            }`}>
-            {alert.type === 'error' ? (
-              <AlertCircle className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-            ) : (
-              <CheckCircle2 className="w-5 h-5 text-brand shrink-0 mt-0.5" />
-            )}
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[999] w-[90%] max-w-md animate-fade-in-up">
+          <div className={`flex items-start gap-3 p-4 rounded-2xl border ${
+            alert.type === 'error'
+              ? 'bg-surface border-danger/40'
+              : 'bg-surface border-mint/40'
+          }`}>
+            {alert.type === 'error'
+              ? <AlertCircle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
+              : <CheckCircle2 className="w-5 h-5 text-mint-deep shrink-0 mt-0.5" />}
             <div className="flex-1 text-left">
-              <h4 className={`font-semibold text-xs uppercase tracking-wider mb-0.5 ${alert.type === 'error' ? 'text-accent' : 'text-brand'}`}>
+              <h4 className={`font-semibold text-xs uppercase tracking-wider mb-0.5 ${alert.type === 'error' ? 'text-danger' : 'text-mint-deep'}`}>
                 {alert.type === 'error' ? 'Error' : 'Success'}
               </h4>
-              <p className="text-xs text-ink/90 font-light leading-relaxed">{alert.message}</p>
+              <p className="text-xs text-ink-soft leading-relaxed">{alert.message}</p>
             </div>
-            <button
-              onClick={() => setAlert(null)}
-              className={`p-1 rounded-lg transition-colors cursor-pointer ${alert.type === 'error'
-                ? 'text-accent hover:bg-accent-soft hover:text-accent'
-                : 'text-brand hover:bg-brand/10 hover:text-brand-ink'
-                }`}
-            >
+            <button onClick={() => setAlert(null)} className="p-1 rounded-lg text-muted hover:text-ink cursor-pointer">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       )}
 
-      {/* HEADER NAVBAR */}
-      <header className="relative h-16 shrink-0 bg-surface border-b border-line px-4 sm:px-6 flex justify-between items-center gap-4 z-10">
+      {/* ------------------------------- HEADER ------------------------------- */}
+      <header className="shrink-0 px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+        <h1 className="text-xl sm:text-2xl font-semibold text-ink tracking-tight">{headerDate}</h1>
 
-        {/* Profile badge & Date/Time display on the left */}
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0 z-10">
-          <AvatarUpload size={38} />
-          <div className="min-w-0 hidden sm:block">
-            <h4 className="text-sm font-bold text-ink truncate leading-tight">{user?.name || 'User'}</h4>
-          </div>
-
-          {/* Exact Local Date/Time display next to profile */}
-          <div className="hidden md:flex items-center gap-2 text-ink-soft font-mono text-xs font-semibold bg-subtle border border-line/70 py-1.5 px-3 rounded-full">
-            <Clock className="w-3.5 h-3.5 text-muted shrink-0" />
-            <span className="text-ink-soft select-none tracking-tight truncate">{timeString || 'Loading clock...'}</span>
-          </div>
-        </div>
-
-        {/* Top Center: Logo Image */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
-          <img src={logo} alt="Logo" className="h-11 sm:h-12 md:h-13 w-auto object-contain transition-transform duration-200 hover:scale-105" />
-        </div>
-
-        {/* Right: Team and Logout actions */}
-        <div className="flex items-center gap-1 shrink-0 z-10">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             to="/team"
-            className="p-2 text-muted hover:text-brand hover:bg-subtle rounded-lg transition-colors cursor-pointer"
-            title="My Team"
+            title="My team"
+            className="w-10 h-10 rounded-full bg-surface border border-line flex items-center justify-center
+                       text-ink-soft hover:text-ink hover:bg-raised transition-colors"
           >
             <Users className="w-4 h-4" />
           </Link>
+
+
+          <div className="flex items-center gap-2.5 pl-1">
+            <AvatarUpload size={36} />
+            <div className="hidden sm:block leading-tight">
+              <p className="text-[13px] font-medium text-ink truncate max-w-[140px]">{user?.name || 'User'}</p>
+              <p className="text-[11px] text-muted truncate max-w-[140px]">{user?.jobTitle || 'Staff'}</p>
+            </div>
+          </div>
+
           <button
+            type="button"
             onClick={logout}
-            className="p-2 text-muted hover:text-accent hover:bg-subtle rounded-lg transition-colors cursor-pointer"
-            title="Log Out"
+            title="Sign out"
+            className="w-10 h-10 rounded-full bg-surface border border-line flex items-center justify-center
+                       text-ink-soft hover:text-danger hover:bg-raised transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>
         </div>
       </header>
 
-      {/* VIEWPORT SCROLLABLE AREA */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 sm:space-y-8">
+      {/* ---------------------------- SCROLL AREA ---------------------------- */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-5">
 
-        {/* Warning Banner on the Last Day & Extended 1-Day Download Window */}
+        {/* Month-end cleanup warning */}
         {isLastDayOfMonth && !isBannerDismissed && (
-          <div className="bg-gradient-to-r from-amber-500/12 via-amber-500/5 to-surface border border-amber-500/30 p-5 rounded-3xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in-up">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/100/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                <AlertCircle className="w-6 h-6 animate-pulse" />
-              </div>
-              <div className="space-y-1 text-left">
-                <h4 className="text-sm font-bold text-ink tracking-tight flex flex-wrap items-center gap-2">
-                  Monthly Cleanup — 1-Day Extended Download Window Active
-                  <span className="px-2.5 py-0.5 text-[9px] font-extrabold uppercase bg-amber-500/100/20 text-amber-300 rounded-full border border-amber-500/30">
-                    Extended +24h Window
-                  </span>
-                </h4>
-                <p className="text-xs text-ink-soft leading-relaxed font-normal">
-                  The data export period has been extended by an extra day. Please ensure all your work is logged and download your final Attendance Sheet (.xlsx) before the extended cleanup deadline.
+          <div className="bg-surface border border-amber/30 rounded-3xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-semibold text-ink">Last day of the month</h4>
+                <p className="text-[11px] text-ink-soft mt-0.5">
+                  This month&apos;s records clear at midnight. Download your sheet before then.
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+            <div className="flex items-center gap-2 shrink-0">
               <button
-                onClick={handleExportExcel}
-                className="flex items-center justify-center gap-2 py-2.5 px-5 rounded-full text-xs font-bold bg-[#111827] hover:bg-black text-white shadow-sm transition-all cursor-pointer w-full md:w-auto shrink-0 active:scale-95"
+                onClick={() => exportSalarySheetToExcel(
+                  daysList, monthNames[currentMonth], currentYear, totalHoursDecimal,
+                  totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                )}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-mint text-mint-ink text-[11px] font-semibold
+                           hover:bg-mint-deep transition-colors cursor-pointer"
               >
-                <FileText className="w-4 h-4" />
-                Download Sheet (.xlsx)
+                <FileText className="w-3.5 h-3.5" />
+                Download sheet
               </button>
               <button
                 onClick={() => {
-                  setIsBannerDismissed(true);
                   sessionStorage.setItem('attendance_cleanup_banner_dismissed', 'true');
+                  setIsBannerDismissed(true);
                 }}
-                className="p-2 text-muted hover:text-ink-soft bg-subtle hover:bg-line rounded-full transition-all cursor-pointer shrink-0"
-                title="Dismiss warning"
+                className="p-2 rounded-xl text-muted hover:text-ink hover:bg-raised transition-colors cursor-pointer"
+                title="Dismiss"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -748,197 +806,240 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* ================= THREE COLUMN WORKSPACE ================= */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
-          {/* ---------- LEFT: CALENDAR + SMOOTH RECORD BOX ---------- */}
+          {/* ============================ LEFT ============================ */}
+          <div className="lg:col-span-8 space-y-5">
+
+            {/* Metric row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              <StatCard
+                tone={1}
+                label="Total worked days"
+                value={totalWorkedDays}
+                delta={workingDaysElapsed > 0 ? `of ${workingDaysElapsed} so far` : 'no days elapsed'}
+              />
+              <StatCard
+                tone={2}
+                label="Monthly hours"
+                value={totalHoursDecimal}
+                unit="hrs"
+                delta={`${Math.max(HOURS_TARGET - parseFloat(totalHoursDecimal), 0).toFixed(1)} to target`}
+              />
+              <StatCard
+                tone={3}
+                label="Total earnings"
+                value={`Rs. ${totalSalary.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                delta={currentStreak > 0 ? `${currentStreak} day streak` : `Rs. ${hourlyRate}/hr`}
+              />
+            </div>
+
+            {/* Charts side by side, directly under the metric row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <HoursChart
+                data={weekData}
+                weekTotal={weekTotal}
+                lastWeekTotal={lastWeekTotal}
+                todayLabel={todayLabel}
+              />
+              <MonthProgress
+                hoursLogged={parseFloat(totalHoursDecimal)}
+                target={HOURS_TARGET}
+                workingDaysElapsed={workingDaysElapsed}
+                workingDaysInMonth={workingDaysInMonth}
+                avgDayLength={avgDayLength}
+                avgStartTime={avgStartTime}
+                overtimeHours={overtimeHours}
+                monthLabel={`${monthNames[currentMonth]} ${currentYear}`}
+              />
+            </div>
+
+            {/* Roster sits at the bottom of the column */}
+            <TopAttendance
+              ranked={ranked}
+              loading={teamLoading}
+              error={teamError}
+              currentUid={user?.uid}
+              workingDaysElapsed={workingDaysElapsed}
+              monthLabel={monthNames[currentMonth]}
+            />
+          </div>
+
+          {/* ============================ RIGHT ============================ */}
           <div className="lg:col-span-4 space-y-5">
 
-            {/* Modern UpGradely-style Calendar Card */}
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
-              <div className="flex justify-between items-center gap-3 mb-6">
-                <div className="min-w-0">
-                  <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Attendance Calendar</h3>
-                </div>
+            {/* Assistant sits at the top of the column */}
+            <Suspense
+              fallback={<div className="rounded-3xl bg-surface border border-line h-[188px] animate-pulse" />}
+            >
+              <RobotPanel onlineCount={online.length} teamCount={byActivity.length} />
+            </Suspense>
 
-                {/* Modern dark capsule pill selector */}
-                <div className="flex items-center gap-1.5 bg-black hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-full text-xs font-semibold shadow-sm transition-all shrink-0">
-                  <button onClick={handlePrevMonth} className="text-slate-400 hover:text-white transition-colors p-0.5 cursor-pointer" title="Previous month">
+            {/* Calendar — compact box, generous day circles */}
+            <div className="bg-surface border border-line rounded-3xl p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h3 className="text-sm font-semibold text-ink tracking-tight">
+                  {monthNames[currentMonth]} {currentYear}
+                </h3>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handlePrevMonth}
+                    aria-label="Previous month"
+                    className="w-7 h-7 rounded-full bg-raised border border-line text-ink flex items-center justify-center
+                               hover:bg-line transition-colors cursor-pointer"
+                  >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
-                  <span className="min-w-[80px] text-center select-none font-medium">
-                    {monthNames[currentMonth].slice(0, 3)} {currentYear}
-                  </span>
-                  <button onClick={handleNextMonth} className="text-slate-400 hover:text-white transition-colors p-0.5 cursor-pointer" title="Next month">
+                  <button
+                    onClick={handleNextMonth}
+                    aria-label="Next month"
+                    className="w-7 h-7 rounded-full bg-raised border border-line text-ink flex items-center justify-center
+                               hover:bg-line transition-colors cursor-pointer"
+                  >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
-              {/* Days labels (Monday first matching modern standard) */}
-              <div className="grid grid-cols-7 gap-2 sm:gap-2.5 mb-3 text-center text-xs font-semibold text-slate-700">
-                {weekDaysHeader.map(d => (
-                  <div key={d} className="py-0.5">{d}</div>
+              <div className="grid grid-cols-7 gap-x-1 gap-y-1 mb-1 text-center text-[11px] text-muted">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
+                  <div key={`${d}-${i}`}>{d}</div>
                 ))}
               </div>
 
-              {/* Calendar grid circular status cells matching reference design */}
-              <div className="grid grid-cols-7 gap-2 sm:gap-2.5">
-                {Array.from({ length: startOffset }).map((_, idx) => (
-                  <div key={`empty-${idx}`} className="aspect-square flex items-center justify-center p-0.5">
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-slate-50/50" />
-                  </div>
-                ))}
+              <div className="grid grid-cols-7 gap-x-1 gap-y-1 justify-items-center">
+                {calendarCells.map((cellDate) => {
+                  const key = format(cellDate, 'yyyy-MM-dd');
+                  const day = dayByKey[key];
 
-                {daysList.map((day) => {
-                  const hasHours = day.hours !== '0.00';
+                  // Cells outside the displayed month are dimmed and inert.
+                  if (!day) {
+                    return (
+                      <span
+                        key={key}
+                        className="w-10 h-10 flex items-center justify-center text-[13px] text-muted/40 select-none"
+                      >
+                        {cellDate.getDate()}
+                      </span>
+                    );
+                  }
+
+                  const worked = day.hours !== '0.00' || day.status === 'Present';
                   const isToday = day.dateKey === realDateKey;
                   const isSelected = selectedDay && selectedDay.dateKey === day.dateKey;
 
-                  let circleStyle = 'bg-slate-50/80 border border-slate-200/80 text-slate-700 hover:bg-slate-100 shadow-2xs';
-                  let content = (
-                    <span className="text-xs font-bold leading-none">{day.dateNum}</span>
-                  );
+                  // Any past day with nothing logged and no day-off marker.
+                  // Future days stay neutral - flagging them would be noise.
+                  const missed =
+                    !worked &&
+                    day.status !== 'Day Off' &&
+                    !!realDateKey &&
+                    day.dateKey <= realDateKey;
 
-                  if (day.status === 'Day Off') {
-                    circleStyle = 'bg-[#ff6947] hover:bg-[#f85936] text-white shadow-xs';
-                    content = (
-                      <div className="flex flex-col items-center justify-center">
-                        <span className="text-[8px] font-bold text-white/80 leading-none">{day.dateNum}</span>
-                        <span className="text-xs font-black text-white leading-none mt-0.5">✕</span>
-                      </div>
-                    );
-                  } else if (day.isWeekend) {
-                    circleStyle = 'bg-[#f1f5f9] hover:bg-[#e2e8f0] text-slate-600';
-                    content = (
-                      <div className="flex flex-col items-center justify-center">
-                        <span className="text-[8px] font-semibold text-slate-400 leading-none">{day.dateNum}</span>
-                        <span className="text-xs font-bold text-slate-600 leading-none mt-0.5">✕</span>
-                      </div>
-                    );
-                  } else if (hasHours || day.status === 'Present') {
-                    circleStyle = 'bg-[#b4f481] hover:bg-[#a6eb70] text-slate-950 shadow-xs';
-                    content = (
-                      <div className="flex flex-col items-center justify-center">
-                        <span className="text-[8px] font-extrabold text-slate-900/80 leading-none">{day.dateNum}</span>
-                        <span className="text-xs font-black text-slate-950 leading-none mt-0.5">✓</span>
-                      </div>
-                    );
-                  }
-
-                  if (isSelected) {
-                    circleStyle += ' ring-2 ring-black ring-offset-2 scale-105 shadow-md';
-                  }
+                  // Fill = state. Green for a logged day, red for a missed one.
+                  // Today and selection are rings layered on top so they never
+                  // hide the underlying state.
+                  let cls = 'text-ink hover:bg-raised';
+                  if (day.isWeekend) cls = 'text-ink-soft hover:bg-raised';
+                  if (worked) cls = 'bg-mint text-mint-ink font-semibold hover:opacity-90';
+                  if (missed) cls = 'bg-danger text-canvas font-semibold hover:opacity-90';
+                  if (isToday) cls += ' ring-2 ring-azure ring-offset-2 ring-offset-surface';
+                  if (isSelected) cls += ' ring-2 ring-ink ring-offset-2 ring-offset-surface';
 
                   return (
-                    <div key={day.dateKey} className="aspect-square flex items-center justify-center p-0.5">
-                      <button
-                        onClick={() => handleSelectDay(day)}
-                        className={`w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer relative ${circleStyle}`}
-                        title={`${day.dateNum} ${monthNames[currentMonth]} ${currentYear} (${day.status})`}
-                      >
-                        {content}
-
-                        {isToday && (
-                          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-black ring-2 ring-white" />
-                        )}
-                      </button>
-                    </div>
+                    <button
+                      key={key}
+                      onClick={() => handleSelectDay(day)}
+                      title={`${format(cellDate, 'EEEE d MMMM yyyy')} — ${day.status}${missed ? ' (not logged)' : ''}`}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center
+                                  text-[13px] transition-colors cursor-pointer relative ${cls}`}
+                    >
+                      {day.dateNum}
+                    </button>
                   );
                 })}
               </div>
 
-              {/* Modern Legend */}
-              <div className="flex gap-4 mt-6 pt-4 border-t border-slate-100 flex-wrap text-xs font-medium select-none justify-center sm:justify-start">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-[#b4f481] flex items-center justify-center text-[7px] font-black text-slate-950">✓</span>
-                  <span className="text-slate-700 font-semibold text-[11px]">Present / Worked</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[7px] font-bold text-slate-600">✕</span>
-                  <span className="text-slate-500 font-semibold text-[11px]">Weekend</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-[#ff6947] flex items-center justify-center text-[7px] font-black text-white">✕</span>
-                  <span className="text-slate-500 font-semibold text-[11px]">Day Off</span>
-                </div>
+              <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-line">
+                <span className="flex items-center gap-1.5 text-[10px] text-ink-soft">
+                  <span className="w-2.5 h-2.5 rounded-full bg-mint" /> Logged
+                </span>
+                <span className="flex items-center gap-1.5 text-[10px] text-ink-soft">
+                  <span className="w-2.5 h-2.5 rounded-full bg-danger" /> Missed
+                </span>
+                <span className="flex items-center gap-1.5 text-[10px] text-ink-soft">
+                  <span className="w-2.5 h-2.5 rounded-full ring-2 ring-azure ring-inset" /> Today
+                </span>
               </div>
 
-              {/* Download Sheet Action Button */}
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={handleExportExcel}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-full text-xs font-bold bg-black hover:bg-slate-800 text-white shadow-sm transition-all cursor-pointer active:scale-[0.98]"
-                >
-                  <FileText className="w-4 h-4 text-slate-300" />
-                  <span>Download Sheet (.xlsx)</span>
-                </button>
-              </div>
+              {/* Export lives with the month it exports */}
+              <button
+                onClick={() => exportSalarySheetToExcel(
+                  daysList, monthNames[currentMonth], currentYear, totalHoursDecimal,
+                  totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                )}
+                className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl
+                           bg-mint text-mint-ink text-[11px] font-semibold hover:bg-mint-deep
+                           transition-colors cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Download .xls
+              </button>
             </div>
 
-            {/* ---------- RECORD BOX: expands smoothly under the calendar ---------- */}
+            {/* Record editor — expands under the calendar */}
             <div
               id="attendance-editor-panel"
               className={`record-collapse ${selectedDay ? 'is-open' : ''}`}
             >
               <div className="record-collapse-inner">
                 {renderedDay && (
-                  <div className="bg-canvas border border-line/80 rounded-3xl p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
-                    <div className="flex justify-between items-start mb-5">
+                  <div className="bg-surface border border-line rounded-3xl p-5">
+                    <div className="flex justify-between items-start mb-4">
                       <div>
-                        <span className="text-[10px] font-bold text-muted uppercase tracking-widest block">Attendance record</span>
-                        <h4 className="text-lg font-extrabold text-ink mt-0.5">
+                        <h4 className="text-base font-semibold text-ink">
                           {renderedDay.dateNum} {monthNames[currentMonth]} {currentYear}
                         </h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${renderedDay.isWeekend ? 'bg-subtle text-ink-soft' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
-                            }`}>
-                            {renderedDay.dayOfWeek}day &bull; {renderedDay.isWeekend ? 'Weekend' : 'Working Day'}
-                          </span>
-                        </div>
+                        <p className="text-[11px] text-muted mt-0.5">
+                          {renderedDay.dayOfWeek}day · {renderedDay.isWeekend ? 'Weekend' : 'Working day'}
+                        </p>
                       </div>
                       <button
                         onClick={() => setSelectedDay(null)}
-                        className="w-8 h-8 flex items-center justify-center text-muted hover:text-ink-soft hover:bg-subtle rounded-full transition-colors cursor-pointer"
-                        title="Close"
+                        aria-label="Close record"
+                        className="w-8 h-8 rounded-full bg-raised border border-line text-ink-soft
+                                   flex items-center justify-center hover:bg-line transition-colors cursor-pointer"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
 
                     <form onSubmit={handleSave} className="space-y-4">
-                      {/* Day Off Switch */}
-                      <div className="flex items-center justify-between p-3.5 bg-subtle/80 rounded-2xl border border-line">
-                        <div className="space-y-0.5 text-left">
-                          <label className="text-xs font-bold text-ink block">Day Off</label>
-                          <p className="text-[11px] text-muted font-light">Mark as a non-working day</p>
+                      <div className="flex items-center justify-between p-3 bg-raised rounded-2xl border border-line">
+                        <div className="text-left">
+                          <label className="text-xs font-medium text-ink block">Day off</label>
+                          <p className="text-[10px] text-muted">Mark as a non-working day</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => {
-                            const newStatus = status === 'Day Off' ? 'Present' : 'Day Off';
-                            setStatus(newStatus);
-                            if (newStatus === 'Day Off') {
-                              setInTime('');
-                              setOutTime('');
-                            } else {
-                              setInTime('08:30');
-                              setOutTime('17:30');
-                            }
+                            const next = status === 'Day Off' ? 'Present' : 'Day Off';
+                            setStatus(next);
+                            if (next === 'Day Off') { setInTime(''); setOutTime(''); }
+                            else { setInTime('08:30'); setOutTime('17:30'); }
                           }}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${status === 'Day Off' ? 'bg-[#111827]' : 'bg-line'}`}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors
+                                      ${status === 'Day Off' ? 'bg-azure' : 'bg-line-strong'}`}
                         >
-                          <span
-                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-canvas shadow ring-0 transition duration-200 ease-in-out ${status === 'Day Off' ? 'translate-x-4' : 'translate-x-0'}`}
-                          />
+                          <span className={`pointer-events-none inline-block h-4 w-4 mt-0.5 transform rounded-full bg-white
+                                            transition duration-200 ${status === 'Day Off' ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
                         </button>
                       </div>
 
-                      <div className={`space-y-4 transition-all duration-200 ${status === 'Day Off' ? 'opacity-40 pointer-events-none' : ''}`}>
+                      <div className={`space-y-4 transition-opacity ${status === 'Day Off' ? 'opacity-40 pointer-events-none' : ''}`}>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-muted uppercase tracking-wider block">IN Time</label>
+                            <label className="text-[10px] font-medium text-muted uppercase tracking-wider block">In</label>
                             <div className="relative">
                               <input
                                 type="text"
@@ -948,14 +1049,14 @@ const Dashboard = () => {
                                 onBlur={handleInBlur}
                                 placeholder="08:30"
                                 disabled={status === 'Day Off'}
-                                className="w-full px-3.5 py-2.5 rounded-2xl bg-subtle/80 border border-line/80 focus:outline-none focus:border-line focus:bg-canvas text-ink text-xs font-mono transition-all pr-8"
+                                className="w-full px-3 py-2 rounded-xl bg-raised border border-line text-ink text-xs font-mono
+                                           focus:outline-none focus:border-mint transition-colors pr-8"
                               />
-                              <Clock className="w-3.5 h-3.5 text-muted absolute right-3 top-3 pointer-events-none" />
+                              <Clock className="w-3.5 h-3.5 text-muted absolute right-3 top-2.5 pointer-events-none" />
                             </div>
                           </div>
-
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-muted uppercase tracking-wider block">OUT Time</label>
+                            <label className="text-[10px] font-medium text-muted uppercase tracking-wider block">Out</label>
                             <div className="relative">
                               <input
                                 type="text"
@@ -965,67 +1066,69 @@ const Dashboard = () => {
                                 onBlur={handleOutBlur}
                                 placeholder="17:30"
                                 disabled={status === 'Day Off'}
-                                className="w-full px-3.5 py-2.5 rounded-2xl bg-subtle/80 border border-line/80 focus:outline-none focus:border-line focus:bg-canvas text-ink text-xs font-mono transition-all pr-8"
+                                className="w-full px-3 py-2 rounded-xl bg-raised border border-line text-ink text-xs font-mono
+                                           focus:outline-none focus:border-mint transition-colors pr-8"
                               />
-                              <Clock className="w-3.5 h-3.5 text-muted absolute right-3 top-3 pointer-events-none" />
+                              <Clock className="w-3.5 h-3.5 text-muted absolute right-3 top-2.5 pointer-events-none" />
                             </div>
                           </div>
                         </div>
 
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-muted uppercase tracking-wider block">Quick Presets</label>
-                          <div className="grid grid-cols-2 gap-2">
-                            {PRESETS.map(([presetIn, presetOut, label]) => (
-                              <button
-                                key={label}
-                                type="button"
-                                onClick={() => { setInTime(presetIn); setOutTime(presetOut); }}
-                                disabled={status === 'Day Off'}
-                                className="py-2 px-2.5 rounded-xl bg-subtle hover:bg-subtle border border-line/80 hover:border-line-strong text-[10px] text-ink-soft transition-all cursor-pointer font-semibold text-center disabled:opacity-50"
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {PRESETS.map(([pIn, pOut, label]) => (
+                            <button
+                              key={label}
+                              type="button"
+                              onClick={() => { setInTime(pIn); setOutTime(pOut); }}
+                              disabled={status === 'Day Off'}
+                              className="py-2 px-1.5 rounded-xl bg-raised border border-line text-[10px] text-ink-soft
+                                         hover:border-mint hover:text-mint transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              {label}
+                            </button>
+                          ))}
                         </div>
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-muted uppercase tracking-wider block">
-                          {status === 'Day Off' ? 'Day Off Reason / Info' : 'Reason / Task Info'}
+                        <label className="text-[10px] font-medium text-muted uppercase tracking-wider block">
+                          {status === 'Day Off' ? 'Reason' : 'Task info'}
                         </label>
                         <input
                           type="text"
                           value={reason}
                           onChange={(e) => setReason(e.target.value)}
-                          placeholder={status === 'Day Off' ? 'e.g. Personal Holiday' : 'e.g. Web Developments'}
-                          className="w-full px-3.5 py-2.5 rounded-2xl bg-subtle/80 border border-line/80 focus:outline-none focus:border-line focus:bg-canvas text-ink text-xs transition-all"
+                          placeholder={status === 'Day Off' ? 'e.g. Personal holiday' : 'e.g. Web development'}
+                          className="w-full px-3 py-2.5 rounded-xl bg-raised border border-line text-ink text-xs
+                                     focus:outline-none focus:border-mint transition-colors"
                         />
                       </div>
 
-                      <div className="p-3.5 bg-subtle/80 rounded-2xl border border-line text-xs space-y-2">
-                        <div className="flex justify-between text-muted">
-                          <span>Calculated Hours:</span>
-                          <span className={`font-bold font-mono ${status === 'Day Off' ? 'text-muted' : 'text-ink'}`}>
-                            {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).hours : '0.00')} hrs
+                      <div className="p-3 bg-raised rounded-2xl border border-line text-xs space-y-2">
+                        <div className="flex justify-between text-ink-soft">
+                          <span>Hours</span>
+                          <span className="font-mono font-semibold text-ink">
+                            {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).hours : '0.00')}
                           </span>
                         </div>
-                        <div className="flex justify-between text-muted border-t border-line/60 pt-2">
-                          <span>Estimated Day Pay:</span>
-                          <span className={`font-bold font-mono ${status === 'Day Off' ? 'text-muted' : 'text-ink'}`}>
+                        <div className="flex justify-between text-ink-soft border-t border-line pt-2">
+                          <span>Day pay</span>
+                          <span className="font-mono font-semibold text-mint-deep">
                             Rs. {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00')}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex gap-2 pt-1">
+                      <div className="flex gap-2">
                         <button
                           type="submit"
                           disabled={isSaving}
-                          className="flex-1 py-3 px-5 rounded-full text-xs font-bold bg-[#111827] hover:bg-black text-white shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all active:scale-[0.98]"
+                          className="flex-1 py-2.5 rounded-xl bg-mint text-mint-ink text-xs font-semibold
+                                     hover:bg-mint-deep transition-colors cursor-pointer disabled:opacity-50
+                                     flex items-center justify-center gap-1.5"
                         >
                           <Save className="w-3.5 h-3.5" />
-                          {isSaving ? 'Saving...' : 'Save Log'}
+                          {isSaving ? 'Saving...' : 'Save record'}
                         </button>
 
                         {(renderedDay.docId || renderedDay.checkIn || renderedDay.checkOut || renderedDay.status === 'Day Off') && (
@@ -1033,8 +1136,9 @@ const Dashboard = () => {
                             type="button"
                             onClick={handleDelete}
                             disabled={isSaving}
-                            className="p-3 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 cursor-pointer disabled:opacity-50 transition-all active:scale-95"
-                            title="Delete Record"
+                            title="Delete record"
+                            className="w-11 rounded-xl bg-raised border border-line text-danger
+                                       flex items-center justify-center hover:bg-line transition-colors cursor-pointer disabled:opacity-50"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1046,60 +1150,6 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Hint shown only while nothing is selected */}
-            {!selectedDay && (
-              <div className="border border-dashed border-line rounded-3xl p-6 text-center select-none bg-subtle/40">
-                <CalendarIcon className="w-7 h-7 text-muted stroke-1 mx-auto mb-2" />
-                <p className="text-xs text-muted font-medium">
-                  Click any calendar day to open its record here.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* ---------- MIDDLE: TOP ATTENDANCE & TEAM STATUS PANELS (SIDE BY SIDE) ---------- */}
-          <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 xl:gap-5 items-start">
-            <TopAttendance
-              ranked={ranked}
-              loading={teamLoading}
-              error={teamError}
-              currentUid={user?.uid}
-            />
-            <TeamStatus
-              byActivity={byActivity}
-              online={online}
-              loading={teamLoading}
-              error={teamError}
-            />
-
-            {/* Spans both columns so it fills the white space below the pair */}
-            <div className="sm:col-span-2">
-              <Suspense
-                fallback={
-                  <div className="h-[280px] sm:h-[320px] rounded-3xl border border-line bg-subtle flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-2 border-brand-soft border-t-brand animate-spin" />
-                  </div>
-                }
-              >
-              <RobotPanel
-                userName={user?.name}
-                onlineCount={online.length}
-                teamCount={byActivity.length}
-                currentStreak={currentStreak}
-                hoursLogged={totalHoursDecimal}
-              />
-              </Suspense>
-            </div>
-          </div>
-
-          {/* ---------- RIGHT: WIDGET BOXES ---------- */}
-          <div className="lg:col-span-3">
-            <StatWidgets
-              totalWorkedDays={totalWorkedDays}
-              totalHoursDecimal={totalHoursDecimal}
-              totalSalary={totalSalary}
-              workingDaysElapsed={workingDaysElapsed}
-            />
           </div>
         </div>
 

@@ -73,7 +73,7 @@ const AttendanceCard = ({
           onClick={handleBreakToggle}
           className={`flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl text-sm font-semibold border transition-all duration-300 ${
             isOnBreak
-              ? 'bg-accent/20 border-amber-500/50 text-amber-300 hover:bg-accent/30'
+              ? 'bg-accent/20 border-amber-500/50 text-amber-700 hover:bg-accent/30'
               : 'bg-subtle border-line hover:bg-subtle hover:border-line-strong/80 text-ink-soft'
           } transform hover:-translate-y-0.5 active:translate-y-0`}
         >
@@ -88,7 +88,7 @@ const AttendanceCard = ({
           className={`flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl text-sm font-semibold transition-all duration-300 border ${
             !isCheckedIn
               ? 'bg-subtle/60 border-line text-muted cursor-not-allowed'
-              : 'bg-accent-soft border-accent/30 text-accent hover:bg-rose-500/100/20 hover:border-rose-500/50 hover:shadow-lg hover:shadow-rose-500/10'
+              : 'bg-accent-soft border-accent/30 text-accent hover:bg-rose-100 hover:border-rose-500/50 hover:shadow-lg hover:shadow-rose-500/10'
           } transform hover:-translate-y-0.5 active:translate-y-0`}
         >
           <LogOut className="w-4 h-4" />
