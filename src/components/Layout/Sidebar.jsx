@@ -10,41 +10,40 @@ const Sidebar = ({ isCheckedIn, isOnBreak }) => {
   const linkClass = ({ isActive }) =>
     `w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
       isActive
-        ? 'bg-gradient-to-r from-violet-600/20 to-indigo-600/10 border-l-4 border-violet-500 text-white font-semibold'
-        : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+        ? 'bg-gradient-to-r from-violet-600/20 to-indigo-600/10 border-l-4 border-violet-500 text-ink font-semibold'
+        : 'text-ink-soft hover:bg-subtle hover:text-ink'
     }`;
 
   return (
-    <aside className="w-full md:w-64 bg-slate-950/80 border-b md:border-r border-slate-800/80 flex flex-col justify-between shrink-0">
+    <aside className="w-full md:w-64 bg-subtle/80 border-b md:border-r border-line flex flex-col justify-between shrink-0">
       <div>
         {/* Logo Brand */}
-        <div className="p-6 flex items-center gap-3 border-b border-slate-900">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-            <Clock className="w-5 h-5 text-white animate-pulse" />
+        <div className="p-6 flex items-center gap-3 border-b border-line">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand to-brand-ink flex items-center justify-center shadow-lg shadow-brand/20">
+            <Clock className="w-5 h-5 text-ink animate-pulse" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-1">
-              Valen<span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">Time</span>
+            <h1 className="text-xl font-bold tracking-tight text-ink flex items-center gap-1">
+              Valen<span className="bg-gradient-to-r from-brand to-brand-ink bg-clip-text text-transparent">Time</span>
             </h1>
-            <span className="text-[10px] text-slate-500 font-semibold tracking-widest uppercase">Smart Portal</span>
+            <span className="text-[10px] text-muted font-semibold tracking-widest uppercase">Smart Portal</span>
           </div>
         </div>
 
         {/* User Profile Summary */}
-        <div className="p-6 border-b border-slate-900 bg-slate-950/30">
+        <div className="p-6 border-b border-line bg-subtle">
           <div className="flex items-center gap-3">
             <AvatarUpload
               size={48}
               status={isCheckedIn ? (isOnBreak ? 'break' : 'active') : 'offline'}
             />
             <div>
-              <h3 className="font-semibold text-white text-sm truncate max-w-[130px]">{user?.name || 'Marcus Vance'}</h3>
-              <p className="text-xs text-slate-400 truncate max-w-[130px]">{user?.role || 'Senior UI Architect'}</p>
+              <h3 className="font-semibold text-ink text-sm truncate max-w-[150px]">{user?.name || 'User'}</h3>
             </div>
           </div>
-          <div className="mt-4 py-1.5 px-3 rounded-lg bg-slate-900/60 border border-slate-800/50 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Status:</span>
-            <span className={`font-semibold ${isCheckedIn ? (isOnBreak ? 'text-amber-400' : 'text-emerald-400') : 'text-slate-400'}`}>
+          <div className="mt-4 py-1.5 px-3 rounded-lg bg-subtle/60 border border-line/50 flex items-center justify-between text-xs">
+            <span className="text-ink-soft">Status:</span>
+            <span className={`font-semibold ${isCheckedIn ? (isOnBreak ? 'text-accent' : 'text-mint-ink') : 'text-ink-soft'}`}>
               {isCheckedIn ? (isOnBreak ? 'On Break' : 'Active Working') : 'Offline'}
             </span>
           </div>
@@ -63,7 +62,7 @@ const Sidebar = ({ isCheckedIn, isOnBreak }) => {
           
           {/* Reports Navigation Section */}
           <div className="space-y-1 pt-1">
-            <span className="px-4 text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-2">Reports</span>
+            <span className="px-4 text-[10px] text-muted font-bold uppercase tracking-wider block mb-2">Reports</span>
             <NavLink to="/reports/monthly" className={linkClass}>
               <FileText className="w-4 h-4" />
               Monthly Overview
@@ -75,7 +74,7 @@ const Sidebar = ({ isCheckedIn, isOnBreak }) => {
           </div>
 
           <div className="pt-2">
-            <span className="px-4 text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-2">Collaboration</span>
+            <span className="px-4 text-[10px] text-muted font-bold uppercase tracking-wider block mb-2">Collaboration</span>
             <NavLink to="/team" className={linkClass}>
               <Users className="w-4 h-4" />
               My Team
@@ -85,9 +84,9 @@ const Sidebar = ({ isCheckedIn, isOnBreak }) => {
       </div>
 
       {/* Sidebar Footer info */}
-      <div className="p-6 border-t border-slate-900 hidden md:block">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <Shield className="w-3.5 h-3.5 text-violet-500/60" />
+      <div className="p-6 border-t border-line hidden md:block">
+        <div className="flex items-center gap-2 text-xs text-muted">
+          <Shield className="w-3.5 h-3.5 text-brand0/60" />
           <span>Secure Enterprise Auth</span>
         </div>
       </div>

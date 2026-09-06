@@ -35,13 +35,13 @@ const AvatarUpload = ({ size = 48, status = null }) => {
 
         {/* Hover / uploading overlay */}
         <span
-          className={`absolute inset-0 rounded-xl bg-slate-950/70 flex items-center justify-center
+          className={`absolute inset-0 rounded-xl bg-ink/60 flex items-center justify-center
                       transition-opacity duration-200 ${busy ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
         >
           {busy ? (
-            <span className="w-4 h-4 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
+            <span className="w-4 h-4 rounded-full border-2 border-surface/40 border-t-white animate-spin" />
           ) : (
-            <Camera className="w-4 h-4 text-violet-200" />
+            <Camera className="w-4 h-4 text-white" />
           )}
         </span>
 
@@ -57,28 +57,28 @@ const AvatarUpload = ({ size = 48, status = null }) => {
       {/* Toast Alert Notification */}
       {alert && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] w-[90%] max-w-md animate-fade-in-up">
-          <div className={`flex items-start gap-3 p-4 rounded-xl backdrop-blur-md shadow-xl border ${
+          <div className={`flex items-start gap-3 p-4 rounded-xl shadow-xl border ${
             alert.type === 'error'
-              ? 'bg-[#1a0e12]/90 border-l-4 border-rose-500 border-y-rose-500/20 border-r-rose-500/20 text-slate-200 shadow-[0_4px_20px_rgba(244,63,94,0.2)]'
-              : 'bg-[#0f1d13]/90 border-l-4 border-[#C4FF36] border-y-[#C4FF36]/20 border-r-[#C4FF36]/20 text-slate-200 shadow-[0_4px_20px_rgba(196,255,54,0.2)]'
+              ? 'bg-accent-soft border-l-4 border-accent border-y-accent/20 border-r-accent/20 text-ink card-soft'
+              : 'bg-mint border-l-4 border-brand border-y-brand/20 border-r-brand/20 text-ink card-soft'
           }`}>
             {alert.type === 'error' ? (
-              <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-accent shrink-0 mt-0.5" />
             ) : (
-              <CheckCircle2 className="w-5 h-5 text-[#C4FF36] shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-5 h-5 text-brand shrink-0 mt-0.5" />
             )}
             <div className="flex-1 text-left">
-              <h4 className={`font-semibold text-xs uppercase tracking-wider mb-0.5 ${alert.type === 'error' ? 'text-rose-400' : 'text-[#C4FF36]'}`}>
+              <h4 className={`font-semibold text-xs uppercase tracking-wider mb-0.5 ${alert.type === 'error' ? 'text-accent' : 'text-brand'}`}>
                 {alert.type === 'error' ? 'Error' : 'Success'}
               </h4>
-              <p className="text-xs text-slate-200/90 font-light leading-relaxed">{alert.message}</p>
+              <p className="text-xs text-ink/90 font-light leading-relaxed">{alert.message}</p>
             </div>
             <button
               onClick={() => setAlert(null)}
               className={`p-1 rounded-lg transition-colors cursor-pointer ${
                 alert.type === 'error'
-                  ? 'text-rose-400 hover:bg-rose-500/10 hover:text-white'
-                  : 'text-[#C4FF36] hover:bg-[#C4FF36]/10 hover:text-white'
+                  ? 'text-accent hover:bg-accent-soft hover:text-accent'
+                  : 'text-brand hover:bg-brand/10 hover:text-brand-ink'
               }`}
             >
               <X className="w-3.5 h-3.5" />

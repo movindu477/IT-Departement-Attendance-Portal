@@ -100,19 +100,19 @@ const MonthlyReport = ({ logs }) => {
   return (
     <div className="space-y-6">
       {/* Header Navigator */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-subtle border border-line rounded-2xl p-6 backdrop-blur-sm">
         <div>
-          <h3 className="text-lg font-bold text-white">Monthly Attendance</h3>
-          <p className="text-xs text-slate-400">View detailed daily calendar breakdowns and monthly aggregates.</p>
+          <h3 className="text-lg font-bold text-ink">Monthly Attendance</h3>
+          <p className="text-xs text-ink-soft">View detailed daily calendar breakdowns and monthly aggregates.</p>
         </div>
-        <div className="flex items-center gap-3 bg-slate-950/60 border border-slate-800 px-4 py-2 rounded-xl">
-          <button onClick={handlePrevMonth} className="text-slate-400 hover:text-white transition-colors">
+        <div className="flex items-center gap-3 bg-subtle border border-line px-4 py-2 rounded-xl">
+          <button onClick={handlePrevMonth} className="text-ink-soft hover:text-ink transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <span className="text-sm font-bold text-white min-w-[120px] text-center">
+          <span className="text-sm font-bold text-ink min-w-[120px] text-center">
             {monthNames[currentMonth]} {currentYear}
           </span>
-          <button onClick={handleNextMonth} className="text-slate-400 hover:text-white transition-colors">
+          <button onClick={handleNextMonth} className="text-ink-soft hover:text-ink transition-colors">
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
@@ -120,55 +120,55 @@ const MonthlyReport = ({ logs }) => {
 
       {/* Aggregate Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-slate-900/40 border border-slate-800/80 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-subtle border border-line p-5 rounded-2xl flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs text-slate-400 font-medium">On-Time Days</span>
-            <span className="text-2xl font-bold text-emerald-400 block">{onTimeCount}</span>
+            <span className="text-xs text-ink-soft font-medium">On-Time Days</span>
+            <span className="text-2xl font-bold text-mint-ink block">{onTimeCount}</span>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+          <div className="w-10 h-10 rounded-lg bg-online/10 flex items-center justify-center text-mint-ink">
             <CheckCircle2 className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-slate-900/40 border border-slate-800/80 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-subtle border border-line p-5 rounded-2xl flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs text-slate-400 font-medium">Late Check-ins</span>
-            <span className="text-2xl font-bold text-amber-400 block">{lateCount}</span>
+            <span className="text-xs text-ink-soft font-medium">Late Check-ins</span>
+            <span className="text-2xl font-bold text-accent block">{lateCount}</span>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
+          <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
             <Clock className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-slate-900/40 border border-slate-800/80 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-subtle border border-line p-5 rounded-2xl flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs text-slate-400 font-medium">Absent Days</span>
-            <span className="text-2xl font-bold text-rose-400 block">{absentCount}</span>
+            <span className="text-xs text-ink-soft font-medium">Absent Days</span>
+            <span className="text-2xl font-bold text-accent block">{absentCount}</span>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
+          <div className="w-10 h-10 rounded-lg bg-accent-soft flex items-center justify-center text-accent">
             <AlertTriangle className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-slate-900/40 border border-slate-800/80 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-subtle border border-line p-5 rounded-2xl flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs text-slate-400 font-medium">Total Monthly Hours</span>
-            <span className="text-2xl font-bold text-violet-400 block">{totalWorkedHours}h</span>
+            <span className="text-xs text-ink-soft font-medium">Total Monthly Hours</span>
+            <span className="text-2xl font-bold text-brand block">{totalWorkedHours}h</span>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400">
+          <div className="w-10 h-10 rounded-lg bg-violet-500/100/10 flex items-center justify-center text-brand">
             <CalendarIcon className="w-5 h-5" />
           </div>
         </div>
       </div>
 
       {/* Grid Calendar Layout */}
-      <div className="bg-[#101426]/90 border border-slate-800/80 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+      <div className="bg-subtle/90 border border-line rounded-2xl p-6 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600/5 rounded-full blur-[100px] -z-10" />
         
         {/* Days of week labels */}
         <div className="grid grid-cols-7 gap-2 mb-4 text-center">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-            <span key={d} className="text-xs font-bold text-slate-500 uppercase tracking-widest py-2">
+            <span key={d} className="text-xs font-bold text-muted uppercase tracking-widest py-2">
               {d}
             </span>
           ))}
@@ -178,18 +178,18 @@ const MonthlyReport = ({ logs }) => {
         <div className="grid grid-cols-7 gap-2.5">
           {calendarDays.map((cell, idx) => {
             if (cell.type === 'empty') {
-              return <div key={`empty-${idx}`} className="aspect-square bg-slate-950/20 rounded-xl border border-slate-900/30" />;
+              return <div key={`empty-${idx}`} className="aspect-square bg-subtle/20 rounded-xl border border-line/30" />;
             }
 
-            let statusColors = 'bg-slate-950/40 border-slate-850 hover:border-slate-700 text-slate-400';
+            let statusColors = 'bg-subtle border-line hover:border-line-strong text-ink-soft';
             if (cell.status === 'On-time') {
-              statusColors = 'bg-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/50 text-emerald-400';
+              statusColors = 'bg-online/5 border-emerald-500/20 hover:border-emerald-500/50 text-mint-ink';
             } else if (cell.status === 'Late') {
-              statusColors = 'bg-amber-500/5 border-amber-500/20 hover:border-amber-500/50 text-amber-400';
+              statusColors = 'bg-accent/5 border-amber-500/20 hover:border-amber-500/50 text-accent';
             } else if (cell.status === 'Absent') {
-              statusColors = 'bg-rose-500/5 border-rose-500/20 hover:border-rose-500/50 text-rose-400';
+              statusColors = 'bg-rose-500/100/5 border-rose-500/20 hover:border-rose-500/50 text-accent';
             } else if (cell.status === 'Weekend') {
-              statusColors = 'bg-slate-900/25 border-slate-850/40 text-slate-600';
+              statusColors = 'bg-subtle/25 border-line/40 text-muted';
             }
 
             return (
@@ -207,38 +207,38 @@ const MonthlyReport = ({ logs }) => {
                 {/* Micro info on hover or compact view */}
                 <div className="hidden sm:block text-[9px] font-semibold mt-2 truncate">
                   {cell.status === 'Weekend' ? (
-                    <span className="text-slate-600 uppercase font-bold">Rest</span>
+                    <span className="text-muted uppercase font-bold">Rest</span>
                   ) : cell.status === 'Absent' ? (
-                    <span className="text-rose-500 uppercase font-bold">Absent</span>
+                    <span className="text-accent0 uppercase font-bold">Absent</span>
                   ) : cell.checkIn ? (
-                    <span className="text-slate-300 font-mono tracking-tight block">
+                    <span className="text-ink-soft font-mono tracking-tight block">
                       {cell.checkIn}
                     </span>
                   ) : (
-                    <span className="text-slate-600">-</span>
+                    <span className="text-muted">-</span>
                   )}
                 </div>
 
                 {/* Desktop hover popup */}
                 {cell.day && cell.status !== 'Weekend' && cell.status !== 'Not Logged' && (
-                  <div className="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-950 border border-slate-800 p-3 rounded-xl shadow-2xl opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all duration-150">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1.5">{cell.dateStr}</p>
-                    <div className="space-y-1 text-xs text-slate-200">
+                  <div className="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-subtle border border-line p-3 rounded-xl shadow-2xl opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all duration-150">
+                    <p className="text-[10px] text-ink-soft font-bold uppercase mb-1.5">{cell.dateStr}</p>
+                    <div className="space-y-1 text-xs text-ink">
                       <div className="flex justify-between">
                         <span>Status:</span>
-                        <span className={`font-semibold ${cell.status === 'On-time' ? 'text-emerald-400' : 'text-amber-400'}`}>{cell.status}</span>
+                        <span className={`font-semibold ${cell.status === 'On-time' ? 'text-mint-ink' : 'text-accent'}`}>{cell.status}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Check In:</span>
-                        <span className="font-mono text-slate-300">{cell.checkIn || '--:--'}</span>
+                        <span className="font-mono text-ink-soft">{cell.checkIn || '--:--'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Check Out:</span>
-                        <span className="font-mono text-slate-300">{cell.checkOut || '--:--'}</span>
+                        <span className="font-mono text-ink-soft">{cell.checkOut || '--:--'}</span>
                       </div>
-                      <div className="flex justify-between border-t border-slate-900 pt-1 mt-1 text-[11px] font-bold">
+                      <div className="flex justify-between border-t border-line pt-1 mt-1 text-[11px] font-bold">
                         <span>Hours:</span>
-                        <span className="text-violet-400 font-mono">{cell.hours || '--'}</span>
+                        <span className="text-brand font-mono">{cell.hours || '--'}</span>
                       </div>
                     </div>
                   </div>
@@ -249,22 +249,22 @@ const MonthlyReport = ({ logs }) => {
         </div>
 
         {/* Legend */}
-        <div className="mt-6 flex flex-wrap gap-4 items-center justify-center text-xs border-t border-slate-900 pt-4">
+        <div className="mt-6 flex flex-wrap gap-4 items-center justify-center text-xs border-t border-line pt-4">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/25 border border-emerald-500/50" />
-            <span className="text-slate-400 font-medium">On-Time</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-online/25 border border-emerald-500/50" />
+            <span className="text-ink-soft font-medium">On-Time</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500/25 border border-amber-500/50" />
-            <span className="text-slate-400 font-medium">Late</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-accent/25 border border-amber-500/50" />
+            <span className="text-ink-soft font-medium">Late</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500/25 border border-rose-500/50" />
-            <span className="text-slate-400 font-medium">Absent / Leave</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500/100/25 border border-rose-500/50" />
+            <span className="text-ink-soft font-medium">Absent / Leave</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-850" />
-            <span className="text-slate-400 font-medium">Weekend / Holiday</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-subtle border border-line" />
+            <span className="text-ink-soft font-medium">Weekend / Holiday</span>
           </div>
         </div>
       </div>

@@ -13,9 +13,9 @@ const PrivateRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center text-slate-400">
+      <div className="min-h-screen bg-canvas flex items-center justify-center text-ink-soft">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-4 border-violet-500/20 border-t-violet-500 animate-spin" />
+          <div className="w-12 h-12 rounded-full border-4 border-brand/20 border-t-brand animate-spin" />
           <p className="text-sm font-medium tracking-wide">Securing session...</p>
         </div>
       </div>

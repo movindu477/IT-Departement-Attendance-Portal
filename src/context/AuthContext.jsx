@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       // Update Auth profile display name
       await updateProfile(userCredential.user, { displayName: name });
-      
+
       const uid = userCredential.user.uid;
 
       const userData = {

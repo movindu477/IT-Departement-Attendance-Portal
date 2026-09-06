@@ -8,12 +8,12 @@ const StatsCard = ({ weeklyHours = 32.5, targetHours = 40.0 }) => {
   const strokeDashoffset = strokeDasharray * (1 - percentage / 100);
 
   return (
-    <div className="bg-[#101426]/90 border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden group">
+    <div className="bg-subtle/90 border border-line rounded-2xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden group">
       <div className="absolute -top-12 -left-12 w-40 h-40 bg-indigo-600/10 rounded-full blur-[60px] -z-10" />
       
       <div>
         <span className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Weekly Hours</span>
-        <h3 className="text-lg font-bold text-white mt-1">Weekly Target</h3>
+        <h3 className="text-lg font-bold text-ink mt-1">Weekly Target</h3>
       </div>
 
       <div className="my-4 flex items-center justify-center relative">
@@ -23,7 +23,7 @@ const StatsCard = ({ weeklyHours = 32.5, targetHours = 40.0 }) => {
             cx="64"
             cy="64"
             r={radius}
-            className="stroke-slate-900 fill-none"
+            className="stroke-line fill-none"
             strokeWidth="10"
           />
           <circle
@@ -38,14 +38,14 @@ const StatsCard = ({ weeklyHours = 32.5, targetHours = 40.0 }) => {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold text-white">{weeklyHours}</span>
-          <span className="text-[10px] text-slate-400 font-medium">of {targetHours.toFixed(1)} hrs</span>
+          <span className="text-2xl font-bold text-ink">{weeklyHours}</span>
+          <span className="text-[10px] text-ink-soft font-medium">of {targetHours.toFixed(1)} hrs</span>
         </div>
       </div>
 
-      <div className="flex justify-between items-center bg-slate-950/40 border border-slate-900 p-3 rounded-xl text-xs">
-        <div className="flex items-center gap-1.5 text-slate-400">
-          <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+      <div className="flex justify-between items-center bg-subtle border border-line p-3 rounded-xl text-xs">
+        <div className="flex items-center gap-1.5 text-ink-soft">
+          <TrendingUp className="w-3.5 h-3.5 text-mint-ink" />
           <span>On Track</span>
         </div>
         <span className="text-indigo-400 font-bold">{percentage.toFixed(2)}% Complete</span>

@@ -6,7 +6,7 @@ import {
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 
 const ME = 'uid_me';
 const OTHER = 'uid_other';
@@ -60,6 +60,34 @@ await check("DENY  delete another user's attendance",
   assertFails(deleteDoc(doc(me, 'attendance', `${OTHER}_2026-09-01`))));
 await check('DENY  signed-out read of users',
   assertFails(getDoc(doc(anon, 'users', OTHER))));
+
+// --- publicStats field guard: shape, not just ownership --------------------
+const STATS_OK = {
+  uid: ME, name: 'Me', month: '2026-09',
+  daysPresent: 3, currentStreak: 2, lastMarked: '2026-09-03',
+  updatedAt: serverTimestamp(),
+};
+
+await check('DENY  publicStats carrying a salary key',
+  assertFails(setDoc(doc(me, 'publicStats', ME), { ...STATS_OK, salary: 1920 })));
+await check('DENY  publicStats carrying an hours key',
+  assertFails(setDoc(doc(me, 'publicStats', ME), { ...STATS_OK, hours: '8.00' })));
+await check('DENY  publicStats carrying checkIn/checkOut',
+  assertFails(setDoc(doc(me, 'publicStats', ME), { ...STATS_OK, checkIn: '08:30', checkOut: '17:30' })));
+await check('DENY  publicStats carrying an unknown key',
+  assertFails(setDoc(doc(me, 'publicStats', ME), { ...STATS_OK, hourlyRate: 240 })));
+await check('ALLOW publicStats with exactly the seven permitted keys',
+  assertSucceeds(setDoc(doc(me, 'publicStats', ME), STATS_OK)));
+await check('ALLOW publicStats with a null currentStreak (non-current month)',
+  assertSucceeds(setDoc(doc(me, 'publicStats', ME), { ...STATS_OK, month: '2026-08', currentStreak: null })));
+await check('ALLOW publicStats with a null lastMarked (no days present)',
+  assertSucceeds(setDoc(doc(me, 'publicStats', ME), { ...STATS_OK, daysPresent: 0, currentStreak: 0, lastMarked: null })));
+
+// --- monthlyReports ownership ---------------------------------------------
+await check("DENY  create monthlyReports with someone else's userId",
+  assertFails(setDoc(doc(me, 'monthlyReports', 'r_other'), { userId: OTHER, month: '2026-09' })));
+await check('ALLOW create own monthlyReports',
+  assertSucceeds(setDoc(doc(me, 'monthlyReports', 'r_me'), { userId: ME, month: '2026-09' })));
 
 // --- what must still work --------------------------------------------------
 await check('ALLOW read own pay data',

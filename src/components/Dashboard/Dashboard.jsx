@@ -1,9 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { exportSalarySheetToExcel } from '../../utils/reportUtils';
 import AvatarUpload from '../Layout/AvatarUpload';
+import logo from '../../assets/images/logo.png';
+import StatWidgets from './StatWidgets';
+import TopAttendance from './TopAttendance';
+import TeamStatus from './TeamStatus';
+// three.js is ~500 kB; loading it lazily keeps it out of the first paint
+const RobotPanel = lazy(() => import('./RobotPanel'));
+import { useTeam } from '../../hooks/useTeam';
 import { computeMonthStats } from '../../utils/computeStats';
 import { format } from 'date-fns';
 import {
@@ -12,15 +20,24 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  DollarSign,
   FileText,
-  Clock3,
   X,
   Save,
   CheckCircle2,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  Users
 } from 'lucide-react';
+
+// Monthly target (160 hrs = standard month)
+const HOURS_TARGET = 160;
+
+const PRESETS = [
+  ['08:30', '17:30', 'Full 08:30-17:30'],
+  ['09:00', '18:00', 'Full 09:00-18:00'],
+  ['08:30', '13:00', 'Half 08:30-13:00'],
+  ['13:00', '17:30', 'Half 13:00-17:30'],
+];
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -33,10 +50,10 @@ const Dashboard = () => {
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  
+
   // Real-time time display
   const [timeString, setTimeString] = useState('');
-  
+
   // Real-world current date key (YYYY-MM-DD)
   const [realDateKey, setRealDateKey] = useState('');
   // Check if today is the last day of the current month
@@ -45,13 +62,13 @@ const Dashboard = () => {
   const [isBannerDismissed, setIsBannerDismissed] = useState(() => {
     return sessionStorage.getItem('attendance_cleanup_banner_dismissed') === 'true';
   });
-  
+
   // Firestore data state
   const [firestoreLogs, setFirestoreLogs] = useState([]);
-  
+
   // Selected date state (for editing side panel)
   const [selectedDay, setSelectedDay] = useState(null);
-  
+
   // Input fields for editing
   const [inTime, setInTime] = useState('');
   const [outTime, setOutTime] = useState('');
@@ -60,28 +77,35 @@ const Dashboard = () => {
   const [status, setStatus] = useState('Present');
   const [alert, setAlert] = useState(null); // { type: 'success' | 'error', message: string }
 
+  // Roster + presence for the middle panels
+  const { ranked, byActivity, online, loading: teamLoading, error: teamError } = useTeam();
+
+  // The record box keeps rendering the last day for the length of the close
+  // animation; unmounting immediately would collapse it with no transition.
+  const [renderedDay, setRenderedDay] = useState(null);
+
   // Time parsing and formatting normalization function
   const parseAndFormatTime = (inputStr, defaultVal = '08:30') => {
     if (!inputStr) return defaultVal;
-    
+
     let clean = inputStr.trim().toLowerCase();
-    
+
     // Check for AM/PM
     const isPM = clean.includes('pm');
     const isAM = clean.includes('am');
-    
+
     // Remove am/pm and non-numeric/non-separator characters
     clean = clean.replace(/(am|pm)/g, '').trim();
-    
+
     let hours = 0;
     let minutes = 0;
-    
+
     // Try matching standard and informal typing formats
     const separatorMatch = clean.match(/^(\d{1,2})[\s\.:](\d{2})$/);
     const singleMinMatch = clean.match(/^(\d{1,2})[\s\.:](\d{1})$/);
     const pureDigitsMatch = clean.match(/^(\d{3,4})$/);
     const pureHoursMatch = clean.match(/^(\d{1,2})$/);
-    
+
     if (separatorMatch) {
       hours = parseInt(separatorMatch[1], 10);
       minutes = parseInt(separatorMatch[2], 10);
@@ -103,19 +127,19 @@ const Dashboard = () => {
     } else {
       return defaultVal;
     }
-    
+
     if (isPM && hours < 12) {
       hours += 12;
     } else if (isAM && hours === 12) {
       hours = 0;
     }
-    
+
     if (isNaN(hours) || hours < 0 || hours > 23) hours = 8;
     if (isNaN(minutes) || minutes < 0 || minutes > 59) minutes = 0;
-    
+
     const hStr = hours < 10 ? `0${hours}` : `${hours}`;
     const mStr = minutes < 10 ? `0${minutes}` : `${minutes}`;
-    
+
     return `${hStr}:${mStr}`;
   };
 
@@ -246,6 +270,7 @@ const Dashboard = () => {
 
   // Helper to determine day of the week name
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDaysHeader = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   // Update digital live clock every second
   useEffect(() => {
@@ -272,12 +297,13 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Check if today is the last day of the current month
+  // Check if today is the last day of the current month OR the 1st day of the next month (+24h extended download period)
   useEffect(() => {
     if (!realDateKey) return;
     const now = new Date();
+    const day = now.getDate();
     const lastDayOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    setIsLastDayOfMonth(now.getDate() === lastDayOfThisMonth);
+    setIsLastDayOfMonth(day === lastDayOfThisMonth || day === 1);
   }, [realDateKey]);
 
   // Listen to attendance logs in real-time from Firestore for the logged-in user
@@ -307,7 +333,7 @@ const Dashboard = () => {
     if (!user?.uid || firestoreLogs.length === 0 || !realDateKey) return;
 
     const [currentYearStr, currentMonthStr] = realDateKey.split('-');
-    
+
     // First day of the current real-world month
     const startOfCurrentMonthKey = `${currentYearStr}-${currentMonthStr}-01`;
 
@@ -334,7 +360,9 @@ const Dashboard = () => {
   };
 
   const getStartDayOfWeek = (month, year) => {
-    return new Date(year, month, 1).getDay();
+    // Convert to Monday-first convention (0 is Mon, 6 is Sun) matching the modern UI reference
+    const day = new Date(year, month, 1).getDay();
+    return (day + 6) % 7;
   };
 
   const daysCount = getDaysInMonth(currentMonth, currentYear);
@@ -379,27 +407,27 @@ const Dashboard = () => {
   // Excel decimal duration and salary calculation
   const calculateHoursAndSalary = (inStr, outStr) => {
     if (!inStr || !outStr) return { hours: '0.00', salary: 0 };
-    
+
     try {
       // Parse/normalize input strings in real-time
       const inNormalized = parseAndFormatTime(inStr, '08:30');
       const outNormalized = parseAndFormatTime(outStr, '17:30');
-      
+
       const [inH, inM] = inNormalized.split(':').map(Number);
       const [outH, outM] = outNormalized.split(':').map(Number);
-      
+
       let diffH = outH - inH;
       let diffM = outM - inM;
-      
+
       if (diffM < 0) {
         diffH -= 1;
         diffM += 60;
       }
-      
+
       // Hours formatted as standard decimal placeholder to match the spreadsheet format (e.g. 9h 30m -> 9.30)
       const hoursDecimal = diffH + (diffM / 100);
       const salaryVal = hoursDecimal * hourlyRate;
-      
+
       return {
         hours: hoursDecimal.toFixed(2),
         salary: parseFloat(salaryVal.toFixed(2))
@@ -408,6 +436,16 @@ const Dashboard = () => {
       return { hours: '0.00', salary: 0 };
     }
   };
+
+  useEffect(() => {
+    if (selectedDay) {
+      setRenderedDay(selectedDay);
+      return;
+    }
+    // Matches the 0.38s grid-template-rows transition in index.css
+    const timer = setTimeout(() => setRenderedDay(null), 400);
+    return () => clearTimeout(timer);
+  }, [selectedDay]);
 
   // Auto-dismiss dashboard alerts
   useEffect(() => {
@@ -425,14 +463,14 @@ const Dashboard = () => {
     setInTime(isDayOff ? '' : (day.checkIn || '08:30'));
     setOutTime(isDayOff ? '' : (day.checkOut || '17:30')); // default out is 17:30
     setReason(day.reason || '');
-    
-    // Smooth scroll into view for the editor drawer panel on mobile/tablet viewports
+
+    // Smooth scroll into view for the attendance record box section
     setTimeout(() => {
       const editorPanel = document.getElementById('attendance-editor-panel');
-      if (editorPanel && window.innerWidth < 1024) {
+      if (editorPanel) {
         editorPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
-    }, 50);
+    }, 80);
   };
 
   // Saving attendance document to Firestore
@@ -445,7 +483,7 @@ const Dashboard = () => {
     const cleanIn = isDayOff ? '' : parseAndFormatTime(inTime, '08:30');
     const cleanOut = isDayOff ? '' : parseAndFormatTime(outTime, '17:30');
     const { hours, salary } = isDayOff ? { hours: '0.00', salary: 0 } : calculateHoursAndSalary(cleanIn, cleanOut);
-    
+
     const docName = `${user.uid}_${selectedDay.dateKey}`;
     const payload = {
       userId: user.uid,
@@ -534,9 +572,41 @@ const Dashboard = () => {
   const totalWorkedMinutes = daysList.reduce((acc, d) => acc + (d.hours !== '0.00' ? parseFloat(d.hours) * 60 : 0), 0);
   const totalHoursDecimal = daysList.reduce((acc, d) => acc + (d.hours !== '0.00' ? parseFloat(d.hours) : 0), 0).toFixed(2);
   const totalSalary = daysList.reduce((acc, d) => acc + d.salary, 0);
-  
-  const salaryGoal = 160 * hourlyRate; // goal: 160 hrs at the user's rate
-  const progressPercent = Math.min((totalSalary / salaryGoal) * 100, 100);
+
+  const salaryGoal = HOURS_TARGET * hourlyRate; // goal: 160 hrs at the user's rate
+
+  // Working days in the displayed month, and how many have already passed.
+  // For a month other than the live one every working day counts as elapsed.
+  const workingDays = daysList.filter(d => !d.isWeekend);
+  const workingDaysInMonth = workingDays.length;
+  const workingDaysElapsed = workingDays.filter(
+    d => !realDateKey || d.dateKey <= realDateKey
+  ).length;
+  const attendanceRate = workingDaysElapsed > 0
+    ? Math.min((totalWorkedDays / workingDaysElapsed) * 100, 100)
+    : 0;
+
+  // Streak is null for any month that isn't the current one — see computeStats
+  const viewMonthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+  const currentStreak = computeMonthStats(firestoreLogs, viewMonthKey).currentStreak ?? 0;
+
+  // Handle downloading sheet and recording export to monthlyReports collection
+  const handleExportExcel = async () => {
+    exportSalarySheetToExcel(daysList, monthNames[currentMonth], currentYear);
+    if (user?.uid) {
+      try {
+        const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+        await setDoc(doc(db, 'monthlyReports', `${user.uid}_${monthKey}`), {
+          userId: user.uid,
+          month: monthKey,
+          format: 'xlsx',
+          createdAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error("Failed to track monthly report export:", err);
+      }
+    }
+  };
 
   // Month navigation
   const handlePrevMonth = () => {
@@ -560,59 +630,73 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden bg-[#0b0f19] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-[#0b0f19] to-black text-slate-200">
-      
+    <div className="h-full w-full flex flex-col overflow-hidden bg-canvas text-ink">
+
       {/* Toast Alert Notification */}
       {alert && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] w-[90%] max-w-md animate-fade-in-up">
-          <div className={`flex items-start gap-3 p-4 rounded-xl backdrop-blur-md shadow-xl border ${
-            alert.type === 'error' 
-              ? 'bg-[#1a0e12]/90 border-l-4 border-rose-500 border-y-rose-500/20 border-r-rose-500/20 text-slate-200 shadow-[0_4px_20px_rgba(244,63,94,0.2)]'
-              : 'bg-[#0f1d13]/90 border-l-4 border-[#C4FF36] border-y-[#C4FF36]/20 border-r-[#C4FF36]/20 text-slate-200 shadow-[0_4px_20px_rgba(196,255,54,0.2)]'
-          }`}>
+          <div className={`flex items-start gap-3 p-4 rounded-xl shadow-xl border ${alert.type === 'error'
+            ? 'bg-accent-soft border-l-4 border-accent border-y-accent/20 border-r-accent/20 text-ink card-soft'
+            : 'bg-mint border-l-4 border-brand border-y-brand/20 border-r-brand/20 text-ink card-soft'
+            }`}>
             {alert.type === 'error' ? (
-              <AlertCircle className="w-5 h-5 text-rose-450 shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-accent shrink-0 mt-0.5" />
             ) : (
-              <CheckCircle2 className="w-5 h-5 text-[#C4FF36] shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-5 h-5 text-brand shrink-0 mt-0.5" />
             )}
             <div className="flex-1 text-left">
-              <h4 className={`font-semibold text-xs uppercase tracking-wider mb-0.5 ${alert.type === 'error' ? 'text-rose-400' : 'text-[#C4FF36]'}`}>
+              <h4 className={`font-semibold text-xs uppercase tracking-wider mb-0.5 ${alert.type === 'error' ? 'text-accent' : 'text-brand'}`}>
                 {alert.type === 'error' ? 'Error' : 'Success'}
               </h4>
-              <p className="text-xs text-slate-200/90 font-light leading-relaxed">{alert.message}</p>
+              <p className="text-xs text-ink/90 font-light leading-relaxed">{alert.message}</p>
             </div>
-            <button 
+            <button
               onClick={() => setAlert(null)}
-              className={`p-1 rounded-lg transition-colors cursor-pointer ${
-                alert.type === 'error' 
-                  ? 'text-rose-400 hover:bg-rose-500/10 hover:text-white' 
-                  : 'text-[#C4FF36] hover:bg-[#C4FF36]/10 hover:text-white'
-              }`}
+              className={`p-1 rounded-lg transition-colors cursor-pointer ${alert.type === 'error'
+                ? 'text-accent hover:bg-accent-soft hover:text-accent'
+                : 'text-brand hover:bg-brand/10 hover:text-brand-ink'
+                }`}
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       )}
-      
+
       {/* HEADER NAVBAR */}
-      <header className="h-16 shrink-0 bg-[#0c101d]/60 backdrop-blur-md border-b border-slate-850 px-4 sm:px-8 flex justify-between items-center z-10">
-        {/* Exact Local Date/Time display */}
-        <div className="flex items-center gap-2.5 text-slate-400 font-mono text-xs sm:text-sm font-semibold">
-          <Clock className="w-4 h-4 text-slate-500" />
-          <span className="text-slate-300 select-none tracking-tight">{timeString || 'Loading clock...'}</span>
+      <header className="relative h-16 shrink-0 bg-surface border-b border-line px-4 sm:px-6 flex justify-between items-center gap-4 z-10">
+
+        {/* Profile badge & Date/Time display on the left */}
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0 z-10">
+          <AvatarUpload size={38} />
+          <div className="min-w-0 hidden sm:block">
+            <h4 className="text-sm font-bold text-ink truncate leading-tight">{user?.name || 'User'}</h4>
+          </div>
+
+          {/* Exact Local Date/Time display next to profile */}
+          <div className="hidden md:flex items-center gap-2 text-ink-soft font-mono text-xs font-semibold bg-subtle border border-line/70 py-1.5 px-3 rounded-full">
+            <Clock className="w-3.5 h-3.5 text-muted shrink-0" />
+            <span className="text-ink-soft select-none tracking-tight truncate">{timeString || 'Loading clock...'}</span>
+          </div>
         </div>
 
-        {/* User Card & Log Out */}
-        <div className="flex items-center gap-4">
-          <div className="text-right hidden sm:block">
-            <h4 className="text-xs font-bold text-slate-200">{user?.name}</h4>
-            <p className="text-[10px] text-slate-500 font-light tracking-wide uppercase">{user?.jobTitle}</p>
-          </div>
-          <AvatarUpload size={36} />
+        {/* Top Center: Logo Image */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
+          <img src={logo} alt="Logo" className="h-11 sm:h-12 md:h-13 w-auto object-contain transition-transform duration-200 hover:scale-105" />
+        </div>
+
+        {/* Right: Team and Logout actions */}
+        <div className="flex items-center gap-1 shrink-0 z-10">
+          <Link
+            to="/team"
+            className="p-2 text-muted hover:text-brand hover:bg-subtle rounded-lg transition-colors cursor-pointer"
+            title="My Team"
+          >
+            <Users className="w-4 h-4" />
+          </Link>
           <button
             onClick={logout}
-            className="p-2 text-slate-500 hover:text-rose-400 hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
+            className="p-2 text-muted hover:text-accent hover:bg-subtle rounded-lg transition-colors cursor-pointer"
             title="Log Out"
           >
             <LogOut className="w-4 h-4" />
@@ -622,49 +706,40 @@ const Dashboard = () => {
 
       {/* VIEWPORT SCROLLABLE AREA */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 sm:space-y-8">
-        
-        {/* Warning Banner on the Last Day of the Month */}
+
+        {/* Warning Banner on the Last Day & Extended 1-Day Download Window */}
         {isLastDayOfMonth && !isBannerDismissed && (
-          <div className="bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-slate-900/30 backdrop-blur-md border border-amber-500/30 p-5 rounded-2xl shadow-[0_4px_20px_rgba(245,158,11,0.05)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in-up">
+          <div className="bg-gradient-to-r from-amber-500/12 via-amber-500/5 to-surface border border-amber-500/30 p-5 rounded-3xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in-up">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/100/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
                 <AlertCircle className="w-6 h-6 animate-pulse" />
               </div>
               <div className="space-y-1 text-left">
-                <h4 className="text-sm font-bold text-white tracking-tight flex flex-wrap items-center gap-2">
-                  Monthly Data Cleanup Scheduled Tonight
-                  <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/20">
-                    Tonight 24:00 (12:00 AM)
+                <h4 className="text-sm font-bold text-ink tracking-tight flex flex-wrap items-center gap-2">
+                  Monthly Cleanup — 1-Day Extended Download Window Active
+                  <span className="px-2.5 py-0.5 text-[9px] font-extrabold uppercase bg-amber-500/100/20 text-amber-300 rounded-full border border-amber-500/30">
+                    Extended +24h Window
                   </span>
                 </h4>
-                <p className="text-xs text-slate-350 leading-relaxed font-light">
-                  All attendance and salary records for this month will be automatically cleared at midnight (24:00). 
-                  Please ensure all your work is logged and download your final Salary Sheet (.xls) before the cleanup.
+                <p className="text-xs text-ink-soft leading-relaxed font-normal">
+                  The data export period has been extended by an extra day. Please ensure all your work is logged and download your final Attendance Sheet (.xlsx) before the extended cleanup deadline.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto justify-end">
               <button
-                onClick={() => {
-                  exportSalarySheetToExcel(
-                    daysList, 
-                    monthNames[currentMonth], 
-                    currentYear, 
-                    totalHoursDecimal, 
-                    totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                  );
-                }}
-                className="flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl text-xs font-bold bg-[#C4FF36] hover:bg-[#b0eb2f] text-black shadow-sm transition-all cursor-pointer w-full md:w-auto shrink-0"
+                onClick={handleExportExcel}
+                className="flex items-center justify-center gap-2 py-2.5 px-5 rounded-full text-xs font-bold bg-[#111827] hover:bg-black text-white shadow-sm transition-all cursor-pointer w-full md:w-auto shrink-0 active:scale-95"
               >
                 <FileText className="w-4 h-4" />
-                Download Salary Sheet (.xls)
+                Download Sheet (.xlsx)
               </button>
               <button
                 onClick={() => {
                   setIsBannerDismissed(true);
                   sessionStorage.setItem('attendance_cleanup_banner_dismissed', 'true');
                 }}
-                className="p-2 text-slate-400 hover:text-white bg-slate-950/40 hover:bg-slate-950/80 rounded-xl transition-all cursor-pointer border border-slate-800/80 shrink-0"
+                className="p-2 text-muted hover:text-ink-soft bg-subtle hover:bg-line rounded-full transition-all cursor-pointer shrink-0"
                 title="Dismiss warning"
               >
                 <X className="w-4 h-4" />
@@ -673,451 +748,358 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* TOP METRICS ROW */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          
-          <div className="bg-slate-900/30 backdrop-blur-md border border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Worked Days</span>
-              <span className="text-2xl font-bold text-white tracking-tight">{totalWorkedDays} Days</span>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-950/40 border border-slate-800/80 flex items-center justify-center text-slate-300">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-          </div>
+        {/* ================= THREE COLUMN WORKSPACE ================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 items-start">
 
-          <div className="bg-slate-900/30 backdrop-blur-md border border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Monthly Hours</span>
-              <span className="text-2xl font-bold text-white tracking-tight">{totalHoursDecimal} hrs</span>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-950/40 border border-slate-800/80 flex items-center justify-center text-slate-300">
-              <Clock3 className="w-5 h-5" />
-            </div>
-          </div>
+          {/* ---------- LEFT: CALENDAR + SMOOTH RECORD BOX ---------- */}
+          <div className="lg:col-span-4 space-y-5">
 
-          <div className="bg-slate-900/30 backdrop-blur-md border border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Total Earnings</span>
-              <span className="text-2xl font-bold text-[#C4FF36] tracking-tight">
-                Rs. {totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-950/40 border border-slate-800/80 flex items-center justify-center text-[#C4FF36]">
-              <DollarSign className="w-5 h-5" />
-            </div>
-          </div>
+            {/* Modern UpGradely-style Calendar Card */}
+            <div className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+              <div className="flex justify-between items-center gap-3 mb-6">
+                <div className="min-w-0">
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Attendance Calendar</h3>
+                </div>
 
-          <div className="bg-slate-900/30 backdrop-blur-md border border-slate-800/80 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Salary Goal Progress</span>
-              <span className="text-xs font-bold text-[#C4FF36]">{progressPercent.toFixed(1)}%</span>
-            </div>
-            <div className="w-full bg-slate-950 rounded-full h-2">
-              <div 
-                className="bg-[#C4FF36] h-2 rounded-full transition-all duration-500 shadow-md shadow-[#C4FF36]/20" 
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-
-        </div>
-
-        {/* CALENDAR AND EDIT DRAWER SPLIT */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          
-          {/* Calendar Box */}
-          <div className="lg:col-span-2 bg-slate-900/30 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-sm">
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-2 mb-6">
-              <div>
-                <h3 className="text-lg font-bold text-white">Monthly Calendar</h3>
-                <p className="text-xs text-slate-400">Click a day to add or edit attendance hours.</p>
-                {/* Color Legend */}
-                <div className="flex gap-3 mt-2.5 flex-wrap text-[10px] font-semibold text-slate-400 select-none">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-sm bg-slate-900 border border-slate-800" />
-                    <span>Working Day</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-sm bg-[#EF401D]/25 border border-[#EF401D]/45" />
-                    <span className="text-red-400/90">Weekend</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-sm bg-indigo-950/30 border border-indigo-900/50" />
-                    <span className="text-indigo-300">Day Off</span>
-                  </div>
+                {/* Modern dark capsule pill selector */}
+                <div className="flex items-center gap-1.5 bg-black hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-full text-xs font-semibold shadow-sm transition-all shrink-0">
+                  <button onClick={handlePrevMonth} className="text-slate-400 hover:text-white transition-colors p-0.5 cursor-pointer" title="Previous month">
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="min-w-[80px] text-center select-none font-medium">
+                    {monthNames[currentMonth].slice(0, 3)} {currentYear}
+                  </span>
+                  <button onClick={handleNextMonth} className="text-slate-400 hover:text-white transition-colors p-0.5 cursor-pointer" title="Next month">
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-950/60 border border-slate-800/80 px-3 py-1.5 rounded-xl text-xs font-bold mt-1 w-full sm:w-auto">
-                <button onClick={handlePrevMonth} className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="min-w-[100px] text-center text-slate-200 select-none">
-                  {monthNames[currentMonth]} {currentYear}
-                </span>
-                <button onClick={handleNextMonth} className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer">
-                  <ChevronRight className="w-4 h-4" />
+
+              {/* Days labels (Monday first matching modern standard) */}
+              <div className="grid grid-cols-7 gap-2 sm:gap-2.5 mb-3 text-center text-xs font-semibold text-slate-700">
+                {weekDaysHeader.map(d => (
+                  <div key={d} className="py-0.5">{d}</div>
+                ))}
+              </div>
+
+              {/* Calendar grid circular status cells matching reference design */}
+              <div className="grid grid-cols-7 gap-2 sm:gap-2.5">
+                {Array.from({ length: startOffset }).map((_, idx) => (
+                  <div key={`empty-${idx}`} className="aspect-square flex items-center justify-center p-0.5">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-slate-50/50" />
+                  </div>
+                ))}
+
+                {daysList.map((day) => {
+                  const hasHours = day.hours !== '0.00';
+                  const isToday = day.dateKey === realDateKey;
+                  const isSelected = selectedDay && selectedDay.dateKey === day.dateKey;
+
+                  let circleStyle = 'bg-slate-50/80 border border-slate-200/80 text-slate-700 hover:bg-slate-100 shadow-2xs';
+                  let content = (
+                    <span className="text-xs font-bold leading-none">{day.dateNum}</span>
+                  );
+
+                  if (day.status === 'Day Off') {
+                    circleStyle = 'bg-[#ff6947] hover:bg-[#f85936] text-white shadow-xs';
+                    content = (
+                      <div className="flex flex-col items-center justify-center">
+                        <span className="text-[8px] font-bold text-white/80 leading-none">{day.dateNum}</span>
+                        <span className="text-xs font-black text-white leading-none mt-0.5">✕</span>
+                      </div>
+                    );
+                  } else if (day.isWeekend) {
+                    circleStyle = 'bg-[#f1f5f9] hover:bg-[#e2e8f0] text-slate-600';
+                    content = (
+                      <div className="flex flex-col items-center justify-center">
+                        <span className="text-[8px] font-semibold text-slate-400 leading-none">{day.dateNum}</span>
+                        <span className="text-xs font-bold text-slate-600 leading-none mt-0.5">✕</span>
+                      </div>
+                    );
+                  } else if (hasHours || day.status === 'Present') {
+                    circleStyle = 'bg-[#b4f481] hover:bg-[#a6eb70] text-slate-950 shadow-xs';
+                    content = (
+                      <div className="flex flex-col items-center justify-center">
+                        <span className="text-[8px] font-extrabold text-slate-900/80 leading-none">{day.dateNum}</span>
+                        <span className="text-xs font-black text-slate-950 leading-none mt-0.5">✓</span>
+                      </div>
+                    );
+                  }
+
+                  if (isSelected) {
+                    circleStyle += ' ring-2 ring-black ring-offset-2 scale-105 shadow-md';
+                  }
+
+                  return (
+                    <div key={day.dateKey} className="aspect-square flex items-center justify-center p-0.5">
+                      <button
+                        onClick={() => handleSelectDay(day)}
+                        className={`w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer relative ${circleStyle}`}
+                        title={`${day.dateNum} ${monthNames[currentMonth]} ${currentYear} (${day.status})`}
+                      >
+                        {content}
+
+                        {isToday && (
+                          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-black ring-2 ring-white" />
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Modern Legend */}
+              <div className="flex gap-4 mt-6 pt-4 border-t border-slate-100 flex-wrap text-xs font-medium select-none justify-center sm:justify-start">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-[#b4f481] flex items-center justify-center text-[7px] font-black text-slate-950">✓</span>
+                  <span className="text-slate-700 font-semibold text-[11px]">Present / Worked</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[7px] font-bold text-slate-600">✕</span>
+                  <span className="text-slate-500 font-semibold text-[11px]">Weekend</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-[#ff6947] flex items-center justify-center text-[7px] font-black text-white">✕</span>
+                  <span className="text-slate-500 font-semibold text-[11px]">Day Off</span>
+                </div>
+              </div>
+
+              {/* Download Sheet Action Button */}
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleExportExcel}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-full text-xs font-bold bg-black hover:bg-slate-800 text-white shadow-sm transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <FileText className="w-4 h-4 text-slate-300" />
+                  <span>Download Sheet (.xlsx)</span>
                 </button>
               </div>
             </div>
 
-            {/* Days labels */}
-            <div className="grid grid-cols-7 gap-2 mb-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                <div key={d} className="py-1">{d}</div>
-              ))}
-            </div>
-
-            {/* Calendar grid cells */}
-            <div className="grid grid-cols-7 gap-1.5 sm:gap-2.5">
-              {/* Padding empty slots */}
-              {Array.from({ length: startOffset }).map((_, idx) => (
-                <div key={`empty-${idx}`} className="aspect-square bg-slate-950/10 rounded-xl border border-slate-900/50" />
-              ))}
-
-              {/* Days List */}
-              {daysList.map((day) => {
-                const hasHours = day.hours !== '0.00';
-                
-                let dayStyle = 'bg-slate-900/10 border-slate-800/60 text-slate-300 hover:border-slate-600 hover:bg-slate-900/30';
-                if (day.status === 'Day Off') {
-                  dayStyle = 'bg-indigo-950/30 border-indigo-900/50 text-indigo-200 hover:border-indigo-700 hover:bg-indigo-900/20';
-                } else if (day.isWeekend) {
-                  dayStyle = 'bg-[#EF401D]/15 border-[#EF401D]/30 text-rose-200 hover:border-[#EF401D]/60 hover:bg-[#EF401D]/25';
-                }
-                
-                const isSelected = selectedDay && selectedDay.dateKey === day.dateKey;
-                if (isSelected) {
-                  dayStyle = 'ring-2 ring-[#C4FF36] border-transparent text-[#C4FF36]';
-                }
-
-                return (
-                  <button
-                    key={day.dateKey}
-                    onClick={() => handleSelectDay(day)}
-                    className={`aspect-square border rounded-xl p-1.5 sm:p-2.5 flex flex-col justify-between items-start transition-all cursor-pointer group relative ${dayStyle}`}
-                  >
-                    <span className="text-[10px] sm:text-xs font-bold">{day.dateNum}</span>
-                    
-                    {/* Micro logs rendering */}
-                    {day.status === 'Day Off' ? (
-                      <div className="text-[7px] sm:text-[8px] font-medium text-indigo-300 w-full text-left font-mono leading-tight">
-                        <span className="block text-indigo-400 font-bold uppercase tracking-tight">Off</span>
-                        <span className="hidden sm:block truncate max-w-full text-slate-550">{day.reason || 'Day Off'}</span>
-                      </div>
-                    ) : day.isWeekend ? (
-                      <span className="text-[7px] sm:text-[8px] font-bold text-[#EF401D] tracking-tight uppercase">Rest</span>
-                    ) : hasHours ? (
-                      <div className="text-[7px] sm:text-[8px] font-medium text-slate-400 w-full text-left font-mono leading-tight">
-                        <span className="block text-[#C4FF36] font-bold">{day.hours}h</span>
-                        <span className="hidden sm:block truncate max-w-full text-slate-550">{day.reason || 'Present'}</span>
-                      </div>
-                    ) : (
-                      <span className="text-[7px] sm:text-[8px] text-slate-600 font-light">Empty</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Edit Drawer Box */}
-          <div 
-            id="attendance-editor-panel"
-            className="bg-slate-900/30 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col h-full min-h-[380px]"
-          >
-            {selectedDay ? (
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <span className="text-[10px] font-bold text-[#C4FF36] uppercase tracking-widest block">Logged hours editor</span>
-                      <h4 className="text-lg font-bold text-white mt-1">
-                        {selectedDay.dateNum} {monthNames[currentMonth]} {currentYear}
-                      </h4>
-                      <p className="text-xs text-slate-400 mt-0.5">{selectedDay.dayOfWeek}day — {selectedDay.isWeekend ? 'Weekend' : 'Working Day'}</p>
-                    </div>
-                    <button 
-                      onClick={() => setSelectedDay(null)}
-                      className="p-1 text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleSave} className="space-y-4">
-                    {/* Day Off Switch */}
-                    <div className="flex items-center justify-between p-3 bg-slate-950/40 rounded-xl border border-slate-800">
-                      <div className="space-y-0.5 text-left">
-                        <label className="text-xs font-bold text-white block">Day Off</label>
-                        <p className="text-[10px] text-slate-500 font-light">Mark this day as a non-working day off</p>
+            {/* ---------- RECORD BOX: expands smoothly under the calendar ---------- */}
+            <div
+              id="attendance-editor-panel"
+              className={`record-collapse ${selectedDay ? 'is-open' : ''}`}
+            >
+              <div className="record-collapse-inner">
+                {renderedDay && (
+                  <div className="bg-canvas border border-line/80 rounded-3xl p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+                    <div className="flex justify-between items-start mb-5">
+                      <div>
+                        <span className="text-[10px] font-bold text-muted uppercase tracking-widest block">Attendance record</span>
+                        <h4 className="text-lg font-extrabold text-ink mt-0.5">
+                          {renderedDay.dateNum} {monthNames[currentMonth]} {currentYear}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${renderedDay.isWeekend ? 'bg-subtle text-ink-soft' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                            }`}>
+                            {renderedDay.dayOfWeek}day &bull; {renderedDay.isWeekend ? 'Weekend' : 'Working Day'}
+                          </span>
+                        </div>
                       </div>
                       <button
-                        type="button"
-                        onClick={() => {
-                          const newStatus = status === 'Day Off' ? 'Present' : 'Day Off';
-                          setStatus(newStatus);
-                          if (newStatus === 'Day Off') {
-                            setInTime('');
-                            setOutTime('');
-                          } else {
-                            setInTime('08:30');
-                            setOutTime('17:30');
-                          }
-                        }}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${status === 'Day Off' ? 'bg-indigo-650' : 'bg-slate-800'}`}
+                        onClick={() => setSelectedDay(null)}
+                        className="w-8 h-8 flex items-center justify-center text-muted hover:text-ink-soft hover:bg-subtle rounded-full transition-colors cursor-pointer"
+                        title="Close"
                       >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${status === 'Day Off' ? 'translate-x-4' : 'translate-x-0'}`}
-                        />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className={`space-y-4 transition-all duration-200 ${status === 'Day Off' ? 'opacity-40 pointer-events-none' : ''}`}>
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* IN Time Field */}
-                        <div className="space-y-1.5 relative">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">IN Time</label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={inTime}
-                              onChange={handleInTimeChange}
-                              onKeyDown={(e) => handleTimeKeyDown(e, setInTime, inTime)}
-                              onBlur={handleInBlur}
-                              placeholder="08:30"
-                              disabled={status === 'Day Off'}
-                              className="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:border-[#C4FF36] focus:ring-1 focus:ring-[#C4FF36] text-white text-xs font-mono transition-all pr-8"
-                            />
-                            <Clock className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-2.5 pointer-events-none" />
-                          </div>
+                    <form onSubmit={handleSave} className="space-y-4">
+                      {/* Day Off Switch */}
+                      <div className="flex items-center justify-between p-3.5 bg-subtle/80 rounded-2xl border border-line">
+                        <div className="space-y-0.5 text-left">
+                          <label className="text-xs font-bold text-ink block">Day Off</label>
+                          <p className="text-[11px] text-muted font-light">Mark as a non-working day</p>
                         </div>
-
-                        {/* OUT Time Field */}
-                        <div className="space-y-1.5 relative">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">OUT Time</label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={outTime}
-                              onChange={handleOutTimeChange}
-                              onKeyDown={(e) => handleTimeKeyDown(e, setOutTime, outTime)}
-                              onBlur={handleOutBlur}
-                              placeholder="17:30"
-                              disabled={status === 'Day Off'}
-                              className="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:border-[#C4FF36] focus:ring-1 focus:ring-[#C4FF36] text-white text-xs font-mono transition-all pr-8"
-                            />
-                            <Clock className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-2.5 pointer-events-none" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Quick Presets */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Quick Presets</label>
-                        <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => { setInTime('08:30'); setOutTime('17:30'); }}
-                            disabled={status === 'Day Off'}
-                            className="py-2 px-1.5 sm:px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[9px] sm:text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
-                          >
-                            Full Day (08:30 - 17:30)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setInTime('09:00'); setOutTime('18:00'); }}
-                            disabled={status === 'Day Off'}
-                            className="py-2 px-1.5 sm:px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[9px] sm:text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
-                          >
-                            Full Day (09:00 - 18:00)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setInTime('08:30'); setOutTime('13:00'); }}
-                            disabled={status === 'Day Off'}
-                            className="py-2 px-1.5 sm:px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[9px] sm:text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
-                          >
-                            Half Day (08:30 - 13:00)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setInTime('13:00'); setOutTime('17:30'); }}
-                            disabled={status === 'Day Off'}
-                            className="py-2 px-1.5 sm:px-2 rounded-xl bg-slate-950 border border-slate-850 hover:border-[#C4FF36]/40 hover:text-[#C4FF36] text-[9px] sm:text-[10px] text-slate-400 transition-all cursor-pointer font-medium text-center hover:bg-slate-900/30 disabled:opacity-50"
-                          >
-                            Half Day (13:00 - 17:30)
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5 font-medium">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        {status === 'Day Off' ? 'Day Off Reason / Info' : 'Reason / Task Info'}
-                      </label>
-                      <input
-                        type="text"
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        placeholder={status === 'Day Off' ? 'e.g. Personal Holiday' : 'e.g. Web Developments'}
-                        className="w-full px-3 py-2.5 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:border-[#C4FF36] focus:ring-1 focus:ring-[#C4FF36] text-white text-xs font-light"
-                      />
-                    </div>
-
-                    <div className="mt-4 p-3 bg-slate-950/40 rounded-xl border border-slate-800 text-xs space-y-1.5">
-                      <div className="flex justify-between text-slate-400">
-                        <span>Calculated Hours:</span>
-                        <span className={`font-bold font-mono ${status === 'Day Off' ? 'text-indigo-400' : 'text-white'}`}>
-                          {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).hours : '0.00')} hrs
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-slate-400 border-t border-slate-800 pt-1.5 mt-1.5">
-                        <span>Estimated Day Pay:</span>
-                        <span className={`font-bold font-mono ${status === 'Day Off' ? 'text-indigo-400' : 'text-[#C4FF36]'}`}>
-                          Rs. {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00')}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 flex gap-2">
-                      <button
-                        type="submit"
-                        disabled={isSaving}
-                        className="flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold bg-[#C4FF36] hover:bg-[#b0eb2f] text-black shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                      >
-                        <Save className="w-3.5 h-3.5" />
-                        {isSaving ? 'Saving...' : 'Save Log'}
-                      </button>
-                      
-                      {(selectedDay.docId || selectedDay.checkIn || selectedDay.checkOut || selectedDay.status === 'Day Off') && (
                         <button
                           type="button"
-                          onClick={handleDelete}
-                          disabled={isSaving}
-                          className="p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 cursor-pointer disabled:opacity-50"
-                          title="Delete Record"
+                          onClick={() => {
+                            const newStatus = status === 'Day Off' ? 'Present' : 'Day Off';
+                            setStatus(newStatus);
+                            if (newStatus === 'Day Off') {
+                              setInTime('');
+                              setOutTime('');
+                            } else {
+                              setInTime('08:30');
+                              setOutTime('17:30');
+                            }
+                          }}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${status === 'Day Off' ? 'bg-[#111827]' : 'bg-line'}`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-canvas shadow ring-0 transition duration-200 ease-in-out ${status === 'Day Off' ? 'translate-x-4' : 'translate-x-0'}`}
+                          />
                         </button>
-                      )}
-                    </div>
-                  </form>
-                </div>
+                      </div>
+
+                      <div className={`space-y-4 transition-all duration-200 ${status === 'Day Off' ? 'opacity-40 pointer-events-none' : ''}`}>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-muted uppercase tracking-wider block">IN Time</label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={inTime}
+                                onChange={handleInTimeChange}
+                                onKeyDown={(e) => handleTimeKeyDown(e, setInTime, inTime)}
+                                onBlur={handleInBlur}
+                                placeholder="08:30"
+                                disabled={status === 'Day Off'}
+                                className="w-full px-3.5 py-2.5 rounded-2xl bg-subtle/80 border border-line/80 focus:outline-none focus:border-line focus:bg-canvas text-ink text-xs font-mono transition-all pr-8"
+                              />
+                              <Clock className="w-3.5 h-3.5 text-muted absolute right-3 top-3 pointer-events-none" />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-muted uppercase tracking-wider block">OUT Time</label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={outTime}
+                                onChange={handleOutTimeChange}
+                                onKeyDown={(e) => handleTimeKeyDown(e, setOutTime, outTime)}
+                                onBlur={handleOutBlur}
+                                placeholder="17:30"
+                                disabled={status === 'Day Off'}
+                                className="w-full px-3.5 py-2.5 rounded-2xl bg-subtle/80 border border-line/80 focus:outline-none focus:border-line focus:bg-canvas text-ink text-xs font-mono transition-all pr-8"
+                              />
+                              <Clock className="w-3.5 h-3.5 text-muted absolute right-3 top-3 pointer-events-none" />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-muted uppercase tracking-wider block">Quick Presets</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {PRESETS.map(([presetIn, presetOut, label]) => (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => { setInTime(presetIn); setOutTime(presetOut); }}
+                                disabled={status === 'Day Off'}
+                                className="py-2 px-2.5 rounded-xl bg-subtle hover:bg-subtle border border-line/80 hover:border-line-strong text-[10px] text-ink-soft transition-all cursor-pointer font-semibold text-center disabled:opacity-50"
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-muted uppercase tracking-wider block">
+                          {status === 'Day Off' ? 'Day Off Reason / Info' : 'Reason / Task Info'}
+                        </label>
+                        <input
+                          type="text"
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          placeholder={status === 'Day Off' ? 'e.g. Personal Holiday' : 'e.g. Web Developments'}
+                          className="w-full px-3.5 py-2.5 rounded-2xl bg-subtle/80 border border-line/80 focus:outline-none focus:border-line focus:bg-canvas text-ink text-xs transition-all"
+                        />
+                      </div>
+
+                      <div className="p-3.5 bg-subtle/80 rounded-2xl border border-line text-xs space-y-2">
+                        <div className="flex justify-between text-muted">
+                          <span>Calculated Hours:</span>
+                          <span className={`font-bold font-mono ${status === 'Day Off' ? 'text-muted' : 'text-ink'}`}>
+                            {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).hours : '0.00')} hrs
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-muted border-t border-line/60 pt-2">
+                          <span>Estimated Day Pay:</span>
+                          <span className={`font-bold font-mono ${status === 'Day Off' ? 'text-muted' : 'text-ink'}`}>
+                            Rs. {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="submit"
+                          disabled={isSaving}
+                          className="flex-1 py-3 px-5 rounded-full text-xs font-bold bg-[#111827] hover:bg-black text-white shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all active:scale-[0.98]"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          {isSaving ? 'Saving...' : 'Save Log'}
+                        </button>
+
+                        {(renderedDay.docId || renderedDay.checkIn || renderedDay.checkOut || renderedDay.status === 'Day Off') && (
+                          <button
+                            type="button"
+                            onClick={handleDelete}
+                            disabled={isSaving}
+                            className="p-3 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 cursor-pointer disabled:opacity-50 transition-all active:scale-95"
+                            title="Delete Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-6 select-none">
-                <CalendarIcon className="w-10 h-10 text-slate-500 stroke-1 mb-3" />
-                <h4 className="text-sm font-bold text-slate-300">No date selected</h4>
-                <p className="text-[11px] text-slate-500 mt-1 max-w-[200px] font-light">Click any calendar cell to manage log times and details.</p>
+            </div>
+
+            {/* Hint shown only while nothing is selected */}
+            {!selectedDay && (
+              <div className="border border-dashed border-line rounded-3xl p-6 text-center select-none bg-subtle/40">
+                <CalendarIcon className="w-7 h-7 text-muted stroke-1 mx-auto mb-2" />
+                <p className="text-xs text-muted font-medium">
+                  Click any calendar day to open its record here.
+                </p>
               </div>
             )}
           </div>
 
-        </div>
+          {/* ---------- MIDDLE: TOP ATTENDANCE & TEAM STATUS PANELS (SIDE BY SIDE) ---------- */}
+          <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 xl:gap-5 items-start">
+            <TopAttendance
+              ranked={ranked}
+              loading={teamLoading}
+              error={teamError}
+              currentUid={user?.uid}
+            />
+            <TeamStatus
+              byActivity={byActivity}
+              online={online}
+              loading={teamLoading}
+              error={teamError}
+            />
 
-        {/* SPREADSHEET TABLE LIST */}
-        <div className="bg-slate-900/30 backdrop-blur-md border border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-800/80 flex justify-between items-center flex-wrap gap-4">
-            <div>
-              <h3 className="text-lg font-bold text-white">Attendance & Salary Statement</h3>
-              <p className="text-xs text-slate-400">Statement breakdown for the active month.</p>
+            {/* Spans both columns so it fills the white space below the pair */}
+            <div className="sm:col-span-2">
+              <Suspense
+                fallback={
+                  <div className="h-[280px] sm:h-[320px] rounded-3xl border border-line bg-subtle flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full border-2 border-brand-soft border-t-brand animate-spin" />
+                  </div>
+                }
+              >
+              <RobotPanel
+                userName={user?.name}
+                onlineCount={online.length}
+                teamCount={byActivity.length}
+                currentStreak={currentStreak}
+                hoursLogged={totalHoursDecimal}
+              />
+              </Suspense>
             </div>
-            
-            <button
-              onClick={() => exportSalarySheetToExcel(daysList, monthNames[currentMonth], currentYear, totalHoursDecimal, totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}
-              className="flex items-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-semibold bg-[#C4FF36] hover:bg-[#b0eb2f] text-black shadow-sm transition-all cursor-pointer"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              Download Salary Sheet (.xls)
-            </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-black text-white text-[11px] font-bold uppercase border-b border-slate-850">
-                  <th className="px-3 sm:px-6 py-3 text-center w-12 border border-slate-800">#</th>
-                  <th className="px-3 sm:px-6 py-3 border border-slate-800">Date</th>
-                  <th className="px-3 sm:px-6 py-3 border border-slate-800">Day</th>
-                  <th className="px-3 sm:px-6 py-3 text-center border border-slate-800">IN</th>
-                  <th className="px-3 sm:px-6 py-3 text-center border border-slate-800">OUT</th>
-                  <th className="px-3 sm:px-6 py-3 text-center border border-slate-800">Hours</th>
-                  <th className="px-3 sm:px-6 py-3 border border-slate-800">Salary (Rs.)</th>
-                  <th className="px-3 sm:px-6 py-3 border border-slate-800">Reason / Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-850 text-xs font-medium text-slate-300">
-                {daysList.map((day, idx) => {
-                  const isWeekend = day.status === 'Weekend';
-                  const isDayOff = day.status === 'Day Off';
-                  const shortMonth = monthNames[currentMonth].slice(0, 3);
-                  
-                  if (isWeekend) {
-                    return (
-                      <tr key={day.dateKey} className="bg-[#EF401D] text-white border-slate-800">
-                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-850/40">{idx + 1}</td>
-                        <td className="px-3 sm:px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dateNum}-{shortMonth}</td>
-                        <td className="px-3 sm:px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dayOfWeek}</td>
-                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
-                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
-                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-850/40 text-red-200">—</td>
-                        <td className="px-3 sm:px-6 py-2.5 border border-slate-850/40 text-red-200">—</td>
-                        <td className="px-3 sm:px-6 py-2.5 border border-slate-850/40 font-bold text-white">{day.dayOfWeek === 'Sat' ? 'Saturday — Weekend' : 'Sunday — Weekend'}</td>
-                      </tr>
-                    );
-                  }
-
-                  if (isDayOff) {
-                    return (
-                      <tr key={day.dateKey} className="bg-indigo-950/40 text-indigo-200 border-slate-850">
-                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800">{idx + 1}</td>
-                        <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold text-indigo-100">{day.dateNum}-{shortMonth}</td>
-                        <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold text-indigo-100">{day.dayOfWeek}</td>
-                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
-                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
-                        <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 text-indigo-400/40 font-mono">—</td>
-                        <td className="px-3 sm:px-6 py-2.5 border border-slate-800 text-indigo-400/40">—</td>
-                        <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold text-indigo-300">Day Off — {day.reason || 'Not Working'}</td>
-                      </tr>
-                    );
-                  }
-
-                  const hasHours = day.hours !== '0.00';
-
-                  return (
-                    <tr key={day.dateKey} className={`${idx % 2 === 0 ? 'bg-[#0f1423]/20' : 'bg-[#0f1423]/50'} hover:bg-slate-900/30 transition-colors`}>
-                      <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800">{idx + 1}</td>
-                      <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold text-white">{day.dateNum}-{shortMonth}</td>
-                      <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold text-white">{day.dayOfWeek}</td>
-                      <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 font-mono">{day.checkIn || '—'}</td>
-                      <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 font-mono">{day.checkOut || '—'}</td>
-                      <td className="px-3 sm:px-6 py-2.5 text-center border border-slate-800 font-mono font-bold text-white">{hasHours ? day.hours : '—'}</td>
-                      <td className="px-3 sm:px-6 py-2.5 border border-slate-800 font-bold font-mono text-white">
-                        {day.salary > 0 ? `Rs. ${day.salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                      </td>
-                      <td className={`px-3 sm:px-6 py-2.5 border border-slate-800 ${day.status === 'Absent' ? 'text-rose-500 font-bold' : 'text-slate-400 font-light'}`}>
-                        {day.reason || (day.status === 'Absent' ? 'Absent' : '—')}
-                      </td>
-                    </tr>
-                  );
-                })}
-                
-                {/* Total row matching green highlighted cell in the spreadsheet */}
-                <tr className="bg-slate-950/60 font-bold border-t-2 border-slate-800 text-sm">
-                  <td colspan="3" className="px-3 sm:px-6 py-3 text-center border border-slate-800 bg-[#C4FF36] text-black font-extrabold uppercase select-none">
-                    TOTAL
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 text-center border border-slate-800">—</td>
-                  <td className="px-3 sm:px-6 py-3 text-center border border-slate-800">—</td>
-                  <td className="px-3 sm:px-6 py-3 text-center border border-slate-800 font-mono text-white font-bold">{totalHoursDecimal}</td>
-                  <td className="px-3 sm:px-6 py-3 border border-slate-800 font-mono text-[#C4FF36] font-bold">
-                    Rs. {totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 border border-slate-800 text-xs text-slate-500 font-light">Calculated at Rs. 240/hr</td>
-                </tr>
-              </tbody>
-            </table>
+          {/* ---------- RIGHT: WIDGET BOXES ---------- */}
+          <div className="lg:col-span-3">
+            <StatWidgets
+              totalWorkedDays={totalWorkedDays}
+              totalHoursDecimal={totalHoursDecimal}
+              totalSalary={totalSalary}
+              workingDaysElapsed={workingDaysElapsed}
+            />
           </div>
         </div>
 

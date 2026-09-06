@@ -1,21 +1,11 @@
 import { format } from 'date-fns';
 
-// Attendance records in this project store status as 'Present' / 'Day Off' /
-// 'Absent' / 'Weekend', and `hours` as a formatted string ('8.30', '0.00').
-export function computeMonthStats(records, monthKey) {
-  const present = records
-    .filter(r =>
-      typeof r.date === 'string' &&
-      r.date.startsWith(monthKey) &&
-      r.status === 'Present' &&
-      parseFloat(r.hours) > 0
-    )
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  // Consecutive working days present, counting backwards. Weekends don't break it.
+// Consecutive working days present, counting backwards from today. Weekends
+// don't break it. Only meaningful for the current month, hence the guard in
+// computeMonthStats below.
+function computeStreak(presentDates) {
   let streak = 0;
   const cursor = new Date();
-  const presentDates = new Set(present.map(r => r.date));
 
   for (let i = 0; i < 60; i++) {
     const day = cursor.getDay();
@@ -26,9 +16,32 @@ export function computeMonthStats(records, monthKey) {
     cursor.setDate(cursor.getDate() - 1);
   }
 
+  return streak;
+}
+
+// Attendance records in this project store status as 'Present' / 'Day Off' /
+// 'Absent' / 'Weekend', and `hours` as a formatted string ('8.30', '0.00').
+//
+// currentStreak is null — not 0 — for any month other than the current one,
+// because the streak walks backwards from today and cannot describe a past
+// month. A real zero and "not applicable" must not look alike.
+export function computeMonthStats(records, monthKey) {
+  const isCurrentMonth = monthKey === format(new Date(), 'yyyy-MM');
+
+  const present = records
+    .filter(r =>
+      typeof r.date === 'string' &&
+      r.date.startsWith(monthKey) &&
+      r.status === 'Present' &&
+      parseFloat(r.hours) > 0
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const dates = present.map(r => r.date);
+
   return {
     daysPresent: present.length,
-    currentStreak: streak,
-    lastMarked: present.at(-1)?.date ?? null,
+    currentStreak: isCurrentMonth ? computeStreak(new Set(dates)) : null,
+    lastMarked: dates.at(-1) ?? null,
   };
 }
