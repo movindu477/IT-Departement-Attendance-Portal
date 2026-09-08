@@ -15,6 +15,9 @@ export async function uploadAvatar(file) {
     .upload(path, blob, { contentType: 'image/jpeg', upsert: true });
 
   if (error) {
+    // Log the raw error before the friendly rewrite - the RLS message alone
+    // does not say whether the JWT lacked the role claim or something else.
+    console.error('supabase upload error:', error);
     if (/row-level security/i.test(error.message)) {
       throw new Error('Upload rejected — sign out and back in, then retry.');
     }

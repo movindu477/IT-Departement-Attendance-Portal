@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { exportSalarySheetToExcel } from '../../utils/reportUtils';
 import AvatarUpload from '../Layout/AvatarUpload';
 import StatCard from './StatCard';
 import TopAttendance from './TopAttendance';
@@ -595,7 +594,21 @@ const Dashboard = () => {
 
   // Handle downloading sheet and recording export to monthlyReports collection
   const handleExportExcel = async () => {
-    exportSalarySheetToExcel(daysList, monthNames[currentMonth], currentYear);
+    // Only the displayed month's records; the generator lays them out by week.
+    const monthRecords = firestoreLogs.filter(
+      l => typeof l.date === 'string' && l.date.startsWith(viewMonthKey)
+    );
+
+    try {
+      // ExcelJS is ~900 kB; importing it on click keeps it out of first paint.
+      const { generateTimesheet } = await import('../../utils/generateTimesheet');
+      await generateTimesheet(new Date(currentYear, currentMonth, 1), monthRecords, user);
+    } catch (err) {
+      console.error('Timesheet export failed:', err);
+      setAlert({ type: 'error', message: 'Could not build the timesheet. Please try again.' });
+      return; // don't record a download that never happened
+    }
+
     if (user?.uid) {
       try {
         const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
@@ -782,10 +795,7 @@ const Dashboard = () => {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
-                onClick={() => exportSalarySheetToExcel(
-                  daysList, monthNames[currentMonth], currentYear, totalHoursDecimal,
-                  totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                )}
+                onClick={handleExportExcel}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-mint text-mint-ink text-[11px] font-semibold
                            hover:bg-mint-deep transition-colors cursor-pointer"
               >
@@ -974,10 +984,7 @@ const Dashboard = () => {
 
               {/* Export lives with the month it exports */}
               <button
-                onClick={() => exportSalarySheetToExcel(
-                  daysList, monthNames[currentMonth], currentYear, totalHoursDecimal,
-                  totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                )}
+                onClick={handleExportExcel}
                 className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl
                            bg-mint text-mint-ink text-[11px] font-semibold hover:bg-mint-deep
                            transition-colors cursor-pointer"

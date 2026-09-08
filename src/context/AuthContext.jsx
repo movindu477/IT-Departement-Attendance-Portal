@@ -16,6 +16,43 @@ const AuthContext = createContext(null);
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100';
 
+/**
+ * Asks the backend to set { role: 'authenticated' } on the freshly created
+ * user, then pulls the new claim into the session.
+ *
+ * The endpoint is not reachable on a static Firebase Hosting deploy - the
+ * catch-all rewrite answers with index.html - so the response is checked
+ * rather than trusted, and a miss is logged loudly instead of silently
+ * appearing to succeed.
+ */
+async function requestUserClaim(firebaseUser) {
+  try {
+    const token = await firebaseUser.getIdToken();
+    const res = await fetch('/api/set-user-claim', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!res.ok || !contentType.includes('application/json')) {
+      console.warn(
+        '[claims] /api/set-user-claim did not answer as JSON (status ' + res.status + '). ' +
+        'This account has no role claim yet, so avatar upload will be refused. ' +
+        'Run: node scripts/setClaims.cjs'
+      );
+      return false;
+    }
+
+    await res.json();
+    // Pull the new claim into this session so no sign-out is needed.
+    await firebaseUser.getIdToken(true);
+    return true;
+  } catch (err) {
+    console.warn('[claims] could not set role claim:', err);
+    return false;
+  }
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -25,6 +62,17 @@ export const AuthProvider = ({ children }) => {
     // Listen to Firebase Auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        try {
+          // getIdToken() serves a cached token until it nears expiry, so a user
+          // whose custom claim was set after their last refresh keeps sending
+          // the old one and Supabase RLS rejects them. Force a refresh here;
+          // it costs one round-trip per sign-in.
+          await firebaseUser.getIdToken(true);
+        } catch (e) {
+          // Non-fatal: a stale token still authenticates against Firestore.
+          console.error('Could not refresh ID token:', e);
+        }
+
         try {
           // Public profile and owner-only pay data live in separate collections
           const [pubSnap, privSnap] = await Promise.all([
@@ -112,6 +160,11 @@ export const AuthProvider = ({ children }) => {
         setDoc(doc(db, 'users', uid), userData),
         setDoc(doc(db, 'userPrivate', uid), { hourlyRate: DEFAULT_HOURLY_RATE })
       ]);
+
+      // Grant the Supabase 'authenticated' role claim. Never let this fail the
+      // registration - the account is already created and usable for
+      // everything except avatar upload.
+      await requestUserClaim(userCredential.user);
 
       setUser({
         uid: uid,
