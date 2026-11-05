@@ -1,6 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Admin is a custom claim on the ID token, never a Firestore field -
+    // a `role: 'admin'` field in users/{uid} would be self-writable, since
+    // that document's write rule only checks ownership.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
     // Public staff profile - readable by any signed-in staff member (team page),
     // writable only by its owner. Must never hold pay data.
     match /users/{userId} {
@@ -8,15 +15,21 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Private staff data (hourlyRate) - owner only, never readable by the team
+    // Private staff data (hourlyRate) - owner only, plus admin read so payroll
+    // can be computed. Write stays owner-only: admin never edits pay data.
     match /userPrivate/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null
+                  && (request.auth.uid == userId || isAdmin());
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Attendance collection - each record carries a per-day salary figure,
-    // so reads are restricted to the owner, matching update/delete
+    // so reads are restricted to the owner and admin. Write stays owner-only -
+    // admin is read-only on attendance by design, so admin can audit payroll
+    // without ever being able to alter what someone logged.
     match /attendance/{attendanceId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null
+                  && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
@@ -33,12 +46,21 @@ service cloud.firestore {
                       ]);
     }
 
-    // Monthly reports collection - users can read their own reports
+    // Monthly reports collection - users can read their own reports; admin
+    // can read all of them to see who has already exported.
     match /monthlyReports/{reportId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null
+                  && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if request.auth != null
                     && request.resource.data.userId == request.auth.uid;
       allow update, delete: if false;
+    }
+
+    // Org-wide payroll config (weekday/weekend hourly rate). Not attendance
+    // data, so the admin-is-read-only rule doesn't apply here - admin is the
+    // only one who should ever see or set pay rates.
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
     }
   }
 }

@@ -2,10 +2,12 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import PrivateRoute from './components/Auth/PrivateRoute';
+import AdminRoute from './components/Auth/AdminRoute';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import Dashboard from './components/Dashboard/Dashboard';
 import TeamPage from './components/Team/TeamPage';
+import AdminDashboard from './components/Admin/AdminDashboard';
 import { configError } from './firebase';
 import SetupGuide from './components/SetupGuide';
 
@@ -32,6 +34,14 @@ function LayoutWrapper() {
   );
 }
 
+// Admins land on the admin overview rather than the staff dashboard - the
+// redirect lives here (not in Login.jsx's setTimeout) so it also covers an
+// admin who navigates to "/" directly while already signed in.
+function RootRoute() {
+  const { isAdmin } = useAuth();
+  return isAdmin ? <Navigate to="/admin" replace /> : <Dashboard />;
+}
+
 function App() {
   if (configError) {
     return <SetupGuide error={configError} />;
@@ -46,8 +56,12 @@ function App() {
             <Route path="/register" element={<Register />} />
 
             <Route element={<PrivateRoute />}>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<RootRoute />} />
               <Route path="/team" element={<TeamPage />} />
+            </Route>
+
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<AdminDashboard />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

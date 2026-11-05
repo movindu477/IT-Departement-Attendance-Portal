@@ -56,22 +56,30 @@ async function requestUserClaim(firebaseUser) {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Listen to Firebase Auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // Admin status is read from the ID token's custom claim, never from
+        // the users/{uid} document - that field is only a UI convenience and
+        // is writable by the user themselves.
+        let adminClaim = false;
         try {
           // getIdToken() serves a cached token until it nears expiry, so a user
           // whose custom claim was set after their last refresh keeps sending
           // the old one and Supabase RLS rejects them. Force a refresh here;
           // it costs one round-trip per sign-in.
           await firebaseUser.getIdToken(true);
+          const tokenResult = await firebaseUser.getIdTokenResult();
+          adminClaim = tokenResult.claims.admin === true;
         } catch (e) {
           // Non-fatal: a stale token still authenticates against Firestore.
           console.error('Could not refresh ID token:', e);
         }
+        setIsAdmin(adminClaim);
 
         try {
           // Public profile and owner-only pay data live in separate collections
@@ -122,6 +130,7 @@ export const AuthProvider = ({ children }) => {
       } else {
         setUser(null);
         setIsAuthenticated(false);
+        setIsAdmin(false);
       }
       setLoading(false);
     });
@@ -197,7 +206,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, register, logout, updateAvatar }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, loading, login, register, logout, updateAvatar }}>
       {children}
     </AuthContext.Provider>
   );
