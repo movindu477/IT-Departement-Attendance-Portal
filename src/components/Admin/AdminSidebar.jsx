@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutGrid, BarChart3, Clock, MessageSquare, Share2, FolderOpen,
-  HelpCircle, MoreHorizontal, ChevronsUpDown, ArrowLeftCircle, LogOut,
+  HelpCircle, MoreHorizontal, ChevronsUpDown, LogOut,
 } from 'lucide-react';
 import { Avatar } from '../Layout/Avatar';
 
@@ -74,10 +74,6 @@ const AdminSidebar = () => {
       </div>
 
       <div className="p-4 border-t border-line space-y-0.5">
-        <NavLink to="/" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-ink-soft hover:bg-raised hover:text-ink transition-colors">
-          <ArrowLeftCircle className="w-4 h-4 text-muted" />
-          Back to my portal
-        </NavLink>
         <button
           type="button"
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-ink-soft hover:bg-raised hover:text-ink transition-colors cursor-pointer"

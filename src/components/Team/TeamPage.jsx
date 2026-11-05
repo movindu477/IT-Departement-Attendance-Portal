@@ -59,9 +59,13 @@ const MemberCard = ({ member, isSelf }) => {
 };
 
 const TeamPage = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const monthKey = format(new Date(), 'yyyy-MM');
   const { byActivity, online, loading, error } = useTeam(monthKey);
+
+  // Admin has no staff dashboard of their own to go back to - only the
+  // admin panel exists for that account.
+  const backTo = isAdmin ? '/admin' : '/';
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-canvas text-ink">
@@ -69,9 +73,9 @@ const TeamPage = () => {
       <header className="h-16 shrink-0 bg-surface border-b border-line px-4 sm:px-8 flex justify-between items-center z-10">
         <div className="flex items-center gap-3">
           <Link
-            to="/"
+            to={backTo}
             className="p-2 -ml-2 text-muted hover:text-ink hover:bg-subtle rounded-lg transition-colors"
-            title="Back to Dashboard"
+            title={isAdmin ? 'Back to admin panel' : 'Back to Dashboard'}
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>

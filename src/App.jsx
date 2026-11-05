@@ -39,6 +39,15 @@ function LayoutWrapper() {
   );
 }
 
+// Admin has no staff dashboard of its own - "/" must never render it for
+// that account, regardless of how the account got there (browser back
+// button, a bookmark, a typed URL). Login.jsx's post-login redirect only
+// covers the sign-in moment; this covers every other path into "/".
+function RootRoute() {
+  const { isAdmin } = useAuth();
+  return isAdmin ? <Navigate to="/admin" replace /> : <Dashboard />;
+}
+
 function App() {
   if (configError) {
     return <SetupGuide error={configError} />;
@@ -53,7 +62,7 @@ function App() {
             <Route path="/register" element={<Register />} />
 
             <Route element={<PrivateRoute />}>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<RootRoute />} />
               <Route path="/team" element={<TeamPage />} />
             </Route>
 
