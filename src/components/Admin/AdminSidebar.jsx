@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutGrid, BarChart3, Clock, MessageSquare, Share2, FolderOpen,
-  HelpCircle, Settings, MoreHorizontal, ChevronsUpDown, ArrowLeftCircle, LogOut,
+  HelpCircle, MoreHorizontal, ChevronsUpDown, ArrowLeftCircle, LogOut,
 } from 'lucide-react';
 import { Avatar } from '../Layout/Avatar';
 
@@ -12,18 +12,18 @@ const NavItem = ({ icon: Icon, label, active, onClick }) => (
     type="button"
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors cursor-pointer ${
-      active ? 'bg-violet-50 text-violet-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+      active ? 'bg-raised text-ink' : 'text-ink-soft hover:bg-raised hover:text-ink'
     }`}
   >
-    <Icon className={`w-4 h-4 ${active ? 'text-violet-600' : 'text-gray-400'}`} />
+    <Icon className={`w-4 h-4 ${active ? 'text-violet-300' : 'text-muted'}`} />
     {label}
   </button>
 );
 
 const SectionLabel = ({ children }) => (
   <div className="flex items-center justify-between px-3 mb-1.5">
-    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{children}</span>
-    <MoreHorizontal className="w-3.5 h-3.5 text-gray-300" />
+    <span className="text-[10px] font-bold text-muted uppercase tracking-wider">{children}</span>
+    <MoreHorizontal className="w-3.5 h-3.5 text-muted" />
   </div>
 );
 
@@ -31,16 +31,16 @@ const AdminSidebar = () => {
   const { user, logout } = useAuth();
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 flex-col justify-between bg-white border-r border-gray-100">
+    <aside className="hidden md:flex w-64 shrink-0 flex-col justify-between bg-surface border-r border-line">
       <div>
         {/* Profile header */}
-        <div className="p-5 flex items-center gap-3 border-b border-gray-100">
+        <div className="p-5 flex items-center gap-3 border-b border-line">
           <Avatar user={user} size={40} />
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-gray-900 truncate">{user?.name || 'Admin'}</p>
-            <p className="text-[11px] text-gray-400 truncate">Admin · ValenTime</p>
+            <p className="text-[13px] font-semibold text-ink truncate">{user?.name || 'Admin'}</p>
+            <p className="text-[11px] text-muted truncate">Admin · ValenTime</p>
           </div>
-          <ChevronsUpDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+          <ChevronsUpDown className="w-3.5 h-3.5 text-muted shrink-0" />
         </div>
 
         <nav className="p-4 space-y-5">
@@ -70,27 +70,27 @@ const AdminSidebar = () => {
         </nav>
       </div>
 
-      <div className="p-4 border-t border-gray-100 space-y-0.5">
+      <div className="p-4 border-t border-line space-y-0.5">
         <Link
           to="/"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-ink-soft hover:bg-raised hover:text-ink transition-colors"
         >
-          <ArrowLeftCircle className="w-4 h-4 text-gray-400" />
+          <ArrowLeftCircle className="w-4 h-4 text-muted" />
           Back to my portal
         </Link>
         <button
           type="button"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-ink-soft hover:bg-raised hover:text-ink transition-colors cursor-pointer"
         >
-          <HelpCircle className="w-4 h-4 text-gray-400" />
+          <HelpCircle className="w-4 h-4 text-muted" />
           Help center
         </button>
         <button
           type="button"
           onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-gray-500 hover:bg-gray-50 hover:text-red-600 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-ink-soft hover:bg-raised hover:text-danger transition-colors cursor-pointer"
         >
-          <LogOut className="w-4 h-4 text-gray-400" />
+          <LogOut className="w-4 h-4 text-muted" />
           Sign out
         </button>
       </div>

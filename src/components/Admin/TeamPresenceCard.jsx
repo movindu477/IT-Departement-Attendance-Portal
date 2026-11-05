@@ -2,10 +2,10 @@ import React from 'react';
 import { TrendingUp } from 'lucide-react';
 
 const TILE_COLORS = [
-  { bg: 'bg-teal-50', ink: 'text-teal-700' },
-  { bg: 'bg-violet-50', ink: 'text-violet-700' },
-  { bg: 'bg-amber-50', ink: 'text-amber-700' },
-  { bg: 'bg-rose-50', ink: 'text-rose-700' },
+  { bg: 'bg-teal-500/15', ink: 'text-teal-300' },
+  { bg: 'bg-violet-500/15', ink: 'text-violet-300' },
+  { bg: 'bg-amber-500/15', ink: 'text-amber-300' },
+  { bg: 'bg-rose-500/15', ink: 'text-rose-300' },
 ];
 
 const HOURS_TARGET = 160; // matches the staff dashboard's monthly target
@@ -17,17 +17,17 @@ const HOURS_TARGET = 160; // matches the staff dashboard's monthly target
  */
 const TeamPresenceCard = ({ online, staffByUid }) => {
   return (
-    <div className="bg-white border border-gray-100 rounded-[20px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <div className="bg-surface border border-line rounded-[20px] p-5 card-soft">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[15px] font-semibold text-gray-900">Who's online</h3>
-        <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+        <h3 className="text-[15px] font-semibold text-ink">Who's online</h3>
+        <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-300 bg-emerald-500/15 px-2.5 py-1 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
           {online.length} online
         </span>
       </div>
 
       {online.length === 0 ? (
-        <p className="text-xs text-gray-400 py-6 text-center">No one is online right now.</p>
+        <p className="text-xs text-muted py-6 text-center">No one is online right now.</p>
       ) : (
         <div className="space-y-4">
           {online.map((m, i) => {
@@ -42,13 +42,13 @@ const TeamPresenceCard = ({ online, staffByUid }) => {
                   {initials}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium text-gray-900 truncate">{m.name}</p>
-                  <p className="text-[11px] text-gray-400 truncate">{m.jobTitle || 'Staff'}</p>
+                  <p className="text-[13px] font-medium text-ink truncate">{m.name}</p>
+                  <p className="text-[11px] text-muted truncate">{m.jobTitle || 'Staff'}</p>
                 </div>
                 {pct !== null && (
                   <div className="text-right shrink-0">
-                    <p className="text-[12px] font-semibold text-gray-900">{pct}%</p>
-                    <p className="flex items-center justify-end gap-0.5 text-[10px] text-emerald-600">
+                    <p className="text-[12px] font-semibold text-ink">{pct}%</p>
+                    <p className="flex items-center justify-end gap-0.5 text-[10px] text-emerald-300">
                       <TrendingUp className="w-2.5 h-2.5" />
                       target
                     </p>

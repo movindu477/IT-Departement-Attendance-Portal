@@ -71,40 +71,40 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="h-full w-full flex overflow-hidden bg-[#F7F7F9] text-gray-900">
+    <div className="h-full w-full flex overflow-hidden bg-canvas text-ink">
       <AdminSidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="shrink-0 px-6 py-4 flex items-center gap-4 border-b border-gray-100 bg-white">
+        <header className="shrink-0 px-6 py-4 flex items-center gap-4 border-b border-line bg-surface">
           <div className="relative flex-1 max-w-sm">
-            <Search className="w-4 h-4 text-gray-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search staff..."
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-[13px] text-gray-700
-                         placeholder:text-gray-400 focus:outline-none focus:border-violet-300 focus:bg-white transition-colors"
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-raised border border-line text-[13px] text-ink
+                         placeholder:text-muted focus:outline-none focus:border-violet-400/60 transition-colors"
             />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-300 bg-white border border-gray-200 rounded px-1.5 py-0.5">/</kbd>
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted bg-surface border border-line rounded px-1.5 py-0.5">/</kbd>
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-full pl-1 pr-3 py-1">
+            <div className="flex items-center gap-1 bg-raised border border-line rounded-full pl-1 pr-3 py-1">
               <button
                 onClick={() => shiftMonth(-1)}
                 aria-label="Previous month"
-                className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-white hover:text-gray-700 transition-colors cursor-pointer"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-muted hover:bg-line hover:text-ink transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-[12px] font-medium text-gray-700 min-w-[96px] text-center">{monthLabel}</span>
+              <Calendar className="w-3.5 h-3.5 text-muted" />
+              <span className="text-[12px] font-medium text-ink min-w-[96px] text-center">{monthLabel}</span>
               <button
                 onClick={() => shiftMonth(1)}
                 aria-label="Next month"
-                className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-white hover:text-gray-700 transition-colors cursor-pointer"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-muted hover:bg-line hover:text-ink transition-colors cursor-pointer"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -114,12 +114,12 @@ const AdminDashboard = () => {
               <button
                 onClick={() => setShowRateNote(v => !v)}
                 title="Pay rate assumptions"
-                className="w-9 h-9 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-full bg-raised border border-line flex items-center justify-center text-muted hover:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
               >
                 <Lightbulb className="w-4 h-4" />
               </button>
               {showRateNote && (
-                <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-100 rounded-xl shadow-lg p-3 text-[11px] text-gray-500 z-10">
+                <div className="absolute right-0 mt-2 w-64 bg-surface border border-line rounded-xl shadow-xl p-3 text-[11px] text-ink-soft z-10">
                   Weekday pay uses each person's own configured rate. Weekend hours are assumed at Rs. {rates.weekendRate}/hr — unconfirmed, see export notes.
                 </div>
               )}
@@ -127,7 +127,7 @@ const AdminDashboard = () => {
 
             <button
               title="More options"
-              className="w-9 h-9 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-full bg-raised border border-line flex items-center justify-center text-muted hover:bg-line hover:text-ink transition-colors cursor-pointer"
             >
               <MoreHorizontal className="w-4 h-4" />
             </button>
@@ -136,18 +136,18 @@ const AdminDashboard = () => {
 
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
           {exportError && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-white border border-red-100 text-red-600 text-xs">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-surface border border-danger/40 text-danger text-xs">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {exportError}
             </div>
           )}
 
           {error && (
-            <div className="flex items-start gap-3 p-4 rounded-2xl bg-white border border-red-100">
-              <ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-surface border border-danger/40">
+              <ShieldAlert className="w-5 h-5 text-danger shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-semibold text-red-600">Could not load admin data</h4>
-                <p className="text-xs text-gray-500 mt-0.5">{error.message}</p>
+                <h4 className="text-sm font-semibold text-danger">Could not load admin data</h4>
+                <p className="text-xs text-ink-soft mt-0.5">{error.message}</p>
               </div>
             </div>
           )}
@@ -156,80 +156,80 @@ const AdminDashboard = () => {
             <>
               {/* Stat tiles */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-gray-100 rounded-[20px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between gap-5 min-h-[128px]">
+                <div className="bg-surface border border-line rounded-[20px] p-5 card-soft flex flex-col justify-between gap-5 min-h-[128px]">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg border border-gray-100 flex items-center justify-center text-gray-400">
+                      <div className="w-8 h-8 rounded-lg border border-line flex items-center justify-center text-muted">
                         <CalendarCheck className="w-4 h-4" />
                       </div>
-                      <span className="text-[12px] text-gray-500">Days present</span>
+                      <span className="text-[12px] text-ink-soft">Days present</span>
                     </div>
-                    <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Live
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Live
                     </span>
                   </div>
                   <div>
-                    <span className="text-[26px] font-semibold text-gray-900 tabular-nums">{loading ? '…' : totals?.daysPresent ?? 0}</span>
+                    <span className="text-[26px] font-semibold text-ink tabular-nums">{loading ? '…' : totals?.daysPresent ?? 0}</span>
                   </div>
                   <div>
-                    <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1.5">
+                    <div className="flex items-center justify-between text-[11px] text-muted mb-1.5">
                       <span>Progress</span>
-                      <span className="font-medium text-gray-600">{attendancePct}%</span>
+                      <span className="font-medium text-ink-soft">{attendancePct}%</span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-raised overflow-hidden">
                       <div className="h-full rounded-full bg-violet-400" style={{ width: `${attendancePct}%` }} />
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white border border-gray-100 rounded-[20px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between gap-5 min-h-[128px]">
+                <div className="bg-surface border border-line rounded-[20px] p-5 card-soft flex flex-col justify-between gap-5 min-h-[128px]">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg border border-gray-100 flex items-center justify-center text-gray-400">
+                    <div className="w-8 h-8 rounded-lg border border-line flex items-center justify-center text-muted">
                       <Users className="w-4 h-4" />
                     </div>
-                    <span className="text-[12px] text-gray-500">Total staff</span>
+                    <span className="text-[12px] text-ink-soft">Total staff</span>
                   </div>
-                  <span className="text-[26px] font-semibold text-gray-900 tabular-nums">{loading ? '…' : totals?.staffCount ?? 0}</span>
+                  <span className="text-[26px] font-semibold text-ink tabular-nums">{loading ? '…' : totals?.staffCount ?? 0}</span>
                   <button
                     onClick={() => scrollTo('staff-table-section')}
-                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-[11px] font-medium text-gray-500 transition-colors cursor-pointer"
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-raised hover:bg-line text-[11px] font-medium text-ink-soft transition-colors cursor-pointer"
                   >
                     View roster <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
 
-                <div className="bg-white border border-gray-100 rounded-[20px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between gap-5 min-h-[128px]">
+                <div className="bg-surface border border-line rounded-[20px] p-5 card-soft flex flex-col justify-between gap-5 min-h-[128px]">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg border border-gray-100 flex items-center justify-center text-gray-400">
+                    <div className="w-8 h-8 rounded-lg border border-line flex items-center justify-center text-muted">
                       <Clock3 className="w-4 h-4" />
                     </div>
-                    <span className="text-[12px] text-gray-500">Total hours</span>
+                    <span className="text-[12px] text-ink-soft">Total hours</span>
                   </div>
-                  <span className="text-[26px] font-semibold text-gray-900 tabular-nums">
+                  <span className="text-[26px] font-semibold text-ink tabular-nums">
                     {loading ? '…' : (totals?.totalHours ?? 0).toFixed(1)}
                   </span>
                   <button
                     onClick={() => scrollTo('analytics-section')}
-                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-[11px] font-medium text-gray-500 transition-colors cursor-pointer"
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-raised hover:bg-line text-[11px] font-medium text-ink-soft transition-colors cursor-pointer"
                   >
                     View chart <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
 
-                <div className="bg-white border border-gray-100 rounded-[20px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between gap-5 min-h-[128px]">
+                <div className="bg-surface border border-line rounded-[20px] p-5 card-soft flex flex-col justify-between gap-5 min-h-[128px]">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg border border-gray-100 flex items-center justify-center text-gray-400">
+                    <div className="w-8 h-8 rounded-lg border border-line flex items-center justify-center text-muted">
                       <Wallet className="w-4 h-4" />
                     </div>
-                    <span className="text-[12px] text-gray-500">Est. payroll</span>
+                    <span className="text-[12px] text-ink-soft">Est. payroll</span>
                   </div>
-                  <span className="text-[26px] font-semibold text-gray-900 tabular-nums">
+                  <span className="text-[26px] font-semibold text-ink tabular-nums">
                     Rs. {loading ? '…' : (totals?.estPay ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
                   <button
                     onClick={handleTeamExport}
                     disabled={exporting || loading}
-                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 text-[11px] font-medium text-violet-600 transition-colors cursor-pointer disabled:opacity-50"
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-violet-500/15 hover:bg-violet-500/25 text-[11px] font-medium text-violet-300 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     {exporting ? 'Building…' : 'Export sheet'} <ArrowRight className="w-3 h-3" />
                   </button>
@@ -251,8 +251,8 @@ const AdminDashboard = () => {
               {/* Table */}
               <div id="staff-table-section" className="scroll-mt-4">
                 {loading ? (
-                  <div className="bg-white border border-gray-100 rounded-[20px] p-10 flex flex-col items-center justify-center gap-3 text-gray-400">
-                    <div className="w-9 h-9 rounded-full border-4 border-violet-100 border-t-violet-500 animate-spin" />
+                  <div className="bg-surface border border-line rounded-[20px] p-10 flex flex-col items-center justify-center gap-3 text-ink-soft">
+                    <div className="w-9 h-9 rounded-full border-4 border-violet-500/20 border-t-violet-400 animate-spin" />
                     <p className="text-xs font-medium">Loading staff attendance…</p>
                   </div>
                 ) : (

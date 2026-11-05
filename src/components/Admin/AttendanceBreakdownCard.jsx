@@ -38,26 +38,26 @@ const AttendanceBreakdownCard = ({ staff, monthDate }) => {
   const pct = n => (totalSlots > 0 ? (n / totalSlots) * 100 : 0);
 
   return (
-    <div className="bg-white border border-gray-100 rounded-[20px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <div className="bg-surface border border-line rounded-[20px] p-5 card-soft">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[15px] font-semibold text-gray-900">Attendance breakdown</h3>
-        <Info className="w-4 h-4 text-gray-300" />
+        <h3 className="text-[15px] font-semibold text-ink">Attendance breakdown</h3>
+        <Info className="w-4 h-4 text-muted" />
       </div>
 
-      <div className="flex h-2.5 w-full rounded-full overflow-hidden bg-gray-100">
+      <div className="flex h-2.5 w-full rounded-full overflow-hidden bg-raised">
         {weekdayPresent > 0 && <div className="bg-emerald-400" style={{ width: `${pct(weekdayPresent)}%` }} />}
         {weekendPresent > 0 && <div className="bg-violet-400" style={{ width: `${pct(weekendPresent)}%` }} />}
       </div>
 
       <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5 mt-4">
-        <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
+        <span className="flex items-center gap-1.5 text-[11px] text-ink-soft">
           <span className="w-2 h-2 rounded-full bg-emerald-400" /> Weekday present
         </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
+        <span className="flex items-center gap-1.5 text-[11px] text-ink-soft">
           <span className="w-2 h-2 rounded-full bg-violet-400" /> Weekend present
         </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
-          <span className="w-2 h-2 rounded-full bg-gray-200" /> No entry
+        <span className="flex items-center gap-1.5 text-[11px] text-ink-soft">
+          <span className="w-2 h-2 rounded-full bg-line-strong" /> No entry
         </span>
       </div>
     </div>
