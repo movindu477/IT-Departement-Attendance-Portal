@@ -22,6 +22,7 @@
 
 import { saveAs } from 'file-saver';
 import { DEFAULT_RATES } from './payroll';
+import { mondayOf } from './calendarUtils';
 
 const ACCOUNTING = '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)';
 const DAY_NAMES  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -37,15 +38,6 @@ const WEEKEND_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBF
 const BANNER_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF4A020' } };
 
 const pad = n => String(n).padStart(2, '0');
-
-/** Monday of the week containing `d`. */
-function mondayOf(d) {
-  const out = new Date(d);
-  const dow = out.getDay();
-  out.setDate(out.getDate() + (dow === 0 ? -6 : 1 - dow));
-  out.setHours(0, 0, 0, 0);
-  return out;
-}
 
 /** Local YYYY-MM-DD - never toISOString(), which rolls evening dates forward a day at UTC+5:30. */
 function dateKey(d) {
