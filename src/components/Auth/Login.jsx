@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { auth } from '../../firebase';
 import { LogIn, CheckCircle2, AlertCircle, X } from 'lucide-react';
 
 const Login = () => {
@@ -25,10 +26,15 @@ const Login = () => {
     setIsSubmitting(true);
     try {
       await login(email, password);
+      // Checked directly off a fresh token rather than waiting on
+      // AuthContext's isAdmin state, which resolves on its own timer and
+      // isn't guaranteed to have settled before this redirect fires.
+      const tokenResult = await auth.currentUser.getIdTokenResult();
+      const destination = tokenResult.claims.admin === true ? '/admin' : '/';
       setSuccess('Access granted! Preparing your dashboard...');
       setIsRedirecting(true);
       setTimeout(() => {
-        navigate('/');
+        navigate(destination);
       }, 1800);
     } catch (err) {
       setError(err.message || 'Invalid email or password.');

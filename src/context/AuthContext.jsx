@@ -14,8 +14,6 @@ const DEFAULT_HOURLY_RATE = 240;
 
 const AuthContext = createContext(null);
 
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100';
-
 /**
  * Asks the backend to set { role: 'authenticated' } on the freshly created
  * user, then pulls the new claim into the session.
@@ -97,7 +95,10 @@ export const AuthProvider = ({ children }) => {
               name: data.name || firebaseUser.displayName || 'User',
               jobTitle: data.jobTitle || 'Software Engineer',
               role: data.role || 'staff',
-              avatar: data.avatar || DEFAULT_AVATAR,
+              // No stock photo fallback - Avatar.jsx already renders initials
+              // on a null avatar, which reads as a placeholder rather than a
+              // stranger's photo.
+              avatar: data.avatar || null,
               hourlyRate: Number(priv.hourlyRate ?? DEFAULT_HOURLY_RATE)
             });
           } else {
@@ -109,7 +110,7 @@ export const AuthProvider = ({ children }) => {
               name: displayName,
               jobTitle: 'Software Engineer',
               role: 'staff',
-              avatar: DEFAULT_AVATAR,
+              avatar: null,
               hourlyRate: DEFAULT_HOURLY_RATE
             });
           }
@@ -122,7 +123,7 @@ export const AuthProvider = ({ children }) => {
             name: displayName,
             jobTitle: 'Software Engineer',
             role: 'staff',
-            avatar: DEFAULT_AVATAR,
+            avatar: null,
             hourlyRate: DEFAULT_HOURLY_RATE
           });
         }

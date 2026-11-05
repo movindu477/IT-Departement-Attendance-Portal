@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutGrid, BarChart3, Clock, MessageSquare, Share2, FolderOpen,
@@ -7,17 +7,20 @@ import {
 } from 'lucide-react';
 import { Avatar } from '../Layout/Avatar';
 
-const NavItem = ({ icon: Icon, label, active, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors cursor-pointer ${
-      active ? 'bg-raised text-ink' : 'text-ink-soft hover:bg-raised hover:text-ink'
-    }`}
-  >
-    <Icon className={`w-4 h-4 ${active ? 'text-violet-300' : 'text-muted'}`} />
-    {label}
-  </button>
+const navLinkClass = ({ isActive }) =>
+  `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors cursor-pointer ${
+    isActive ? 'bg-raised text-ink' : 'text-ink-soft hover:bg-raised hover:text-ink'
+  }`;
+
+const NavItem = ({ icon: Icon, label, to, end }) => (
+  <NavLink to={to} end={end} className={navLinkClass}>
+    {({ isActive }) => (
+      <>
+        <Icon className={`w-4 h-4 ${isActive ? 'text-violet-300' : 'text-muted'}`} />
+        {label}
+      </>
+    )}
+  </NavLink>
 );
 
 const SectionLabel = ({ children }) => (
@@ -47,37 +50,34 @@ const AdminSidebar = () => {
           <div>
             <SectionLabel>General</SectionLabel>
             <div className="space-y-0.5">
-              <NavItem icon={LayoutGrid} label="Dashboard" active />
+              <NavItem icon={LayoutGrid} label="Dashboard" to="/admin" end />
             </div>
           </div>
 
           <div>
             <SectionLabel>Overview</SectionLabel>
             <div className="space-y-0.5">
-              <NavItem icon={BarChart3} label="Payroll analytics" />
-              <NavItem icon={Clock} label="Attendance log" />
+              <NavItem icon={BarChart3} label="Payroll analytics" to="/admin/payroll" />
+              <NavItem icon={Clock} label="Attendance log" to="/admin/attendance" />
             </div>
           </div>
 
           <div>
             <SectionLabel>Collaboration</SectionLabel>
             <div className="space-y-0.5">
-              <NavItem icon={MessageSquare} label="Team" />
-              <NavItem icon={Share2} label="Presence" />
-              <NavItem icon={FolderOpen} label="Reports" />
+              <NavItem icon={MessageSquare} label="Team" to="/team" />
+              <NavItem icon={Share2} label="Presence" to="/admin/presence" />
+              <NavItem icon={FolderOpen} label="Reports" to="/admin/reports" />
             </div>
           </div>
         </nav>
       </div>
 
       <div className="p-4 border-t border-line space-y-0.5">
-        <Link
-          to="/"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-ink-soft hover:bg-raised hover:text-ink transition-colors"
-        >
+        <NavLink to="/" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-ink-soft hover:bg-raised hover:text-ink transition-colors">
           <ArrowLeftCircle className="w-4 h-4 text-muted" />
           Back to my portal
-        </Link>
+        </NavLink>
         <button
           type="button"
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-ink-soft hover:bg-raised hover:text-ink transition-colors cursor-pointer"
