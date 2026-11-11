@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
-import { Info } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { daysInMonth, weekdayIndexOf, isWeekendIndex } from '../../utils/calendarUtils';
 
 /**
- * "Assignment Breakdown" equivalent - how this month's staff-days split
+ * "Patient Demographics" equivalent - how this month's staff-days split
  * between weekday attendance, weekend attendance (the premium-rate case),
- * and days with nothing logged.
+ * and days with nothing logged. Percentages are real; there are no
+ * month-over-month deltas shown, since computing those would mean a second
+ * month's worth of attendance queries for a cosmetic number.
  */
 function computeBreakdown(staff, monthDate) {
   const days = daysInMonth(monthDate);
@@ -35,30 +37,44 @@ const AttendanceBreakdownCard = ({ staff, monthDate }) => {
     [staff, monthDate]
   );
 
-  const pct = n => (totalSlots > 0 ? (n / totalSlots) * 100 : 0);
+  const pct = n => (totalSlots > 0 ? Math.round((n / totalSlots) * 100) : 0);
+  const widthPct = n => (totalSlots > 0 ? (n / totalSlots) * 100 : 0);
 
   return (
-    <div className="bg-surface border border-line rounded-[20px] p-5 card-soft">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[15px] font-semibold text-ink">Attendance breakdown</h3>
-        <Info className="w-4 h-4 text-muted" />
+    <div className="bg-white rounded-[22px] p-5 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-[15px] font-semibold text-slate-900">Staff Demographics</h3>
+        <MoreHorizontal className="w-4 h-4 text-slate-300" />
       </div>
 
-      <div className="flex h-2.5 w-full rounded-full overflow-hidden bg-raised">
-        {weekdayPresent > 0 && <div className="bg-emerald-400" style={{ width: `${pct(weekdayPresent)}%` }} />}
-        {weekendPresent > 0 && <div className="bg-violet-400" style={{ width: `${pct(weekendPresent)}%` }} />}
+      <div className="flex items-center flex-wrap gap-x-8 gap-y-3 mb-5">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-400" />
+          <span className="text-[12px] text-slate-500">Weekday</span>
+          <span className="text-[13px] font-semibold text-slate-900">{pct(weekdayPresent)}%</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-amber-400" />
+          <span className="text-[12px] text-slate-500">Weekend</span>
+          <span className="text-[13px] font-semibold text-slate-900">{pct(weekendPresent)}%</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span className="text-[12px] text-slate-500">No entry</span>
+          <span className="text-[13px] font-semibold text-slate-900">{pct(remaining)}%</span>
+        </div>
       </div>
 
-      <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5 mt-4">
-        <span className="flex items-center gap-1.5 text-[11px] text-ink-soft">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" /> Weekday present
-        </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-ink-soft">
-          <span className="w-2 h-2 rounded-full bg-violet-400" /> Weekend present
-        </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-ink-soft">
-          <span className="w-2 h-2 rounded-full bg-line-strong" /> No entry
-        </span>
+      <div className="flex h-3 w-full rounded-full overflow-hidden bg-slate-100">
+        {weekdayPresent > 0 && (
+          <div className="bg-gradient-to-r from-blue-400 to-blue-300" style={{ width: `${widthPct(weekdayPresent)}%` }} />
+        )}
+        {weekendPresent > 0 && (
+          <div className="bg-gradient-to-r from-amber-400 to-amber-300" style={{ width: `${widthPct(weekendPresent)}%` }} />
+        )}
+        {remaining > 0 && (
+          <div className="bg-gradient-to-r from-emerald-400 to-emerald-300" style={{ width: `${widthPct(remaining)}%` }} />
+        )}
       </div>
     </div>
   );
