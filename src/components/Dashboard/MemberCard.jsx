@@ -19,8 +19,8 @@ const MemberCard = ({
     .split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   const badgeClass = badgeTone === 'mint'
-    ? 'bg-mint text-mint-ink'
-    : 'bg-azure text-white';
+    ? 'bg-emerald-50 text-emerald-600'
+    : 'bg-blue-50 text-blue-600';
 
   const showPhoto = member?.avatar && !imgError;
 
@@ -33,25 +33,25 @@ const MemberCard = ({
             alt={member.name || 'Team member'}
             onError={() => setImgError(true)}
             loading="lazy"
-            className="w-16 h-16 rounded-full object-cover bg-raised"
+            className="w-16 h-16 rounded-full object-cover bg-slate-100"
           />
         ) : (
-          <div className="w-16 h-16 rounded-full bg-raised border border-line
-                          flex items-center justify-center text-base font-semibold text-ink-soft">
+          <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-100
+                          flex items-center justify-center text-base font-semibold text-slate-500">
             {initials}
           </div>
         )}
 
         {member?.isOnline && (
           <span
-            className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-online border-2 border-surface"
+            className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-online border-2 border-white"
             title="Online now"
           />
         )}
       </div>
 
       <div className="mt-2.5 flex items-center justify-center gap-1.5 flex-wrap">
-        <h4 className="text-[13px] font-semibold text-ink truncate max-w-[130px]">
+        <h4 className="text-[13px] font-semibold text-slate-900 truncate max-w-[130px]">
           {member?.name || 'Unnamed'}
         </h4>
         {badge && (
@@ -61,21 +61,21 @@ const MemberCard = ({
         )}
         {isSelf && (
           <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded
-                           border border-line-strong text-ink-soft">
+                           border border-slate-200 text-slate-500">
             You
           </span>
         )}
       </div>
 
       {dateLine && (
-        <p className="mt-1.5 flex items-center justify-center gap-1.5 text-[11px] text-ink-soft">
-          <CalendarIcon className="w-3.5 h-3.5 text-muted shrink-0" />
+        <p className="mt-1.5 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
+          <CalendarIcon className="w-3.5 h-3.5 text-slate-300 shrink-0" />
           {dateLine}
         </p>
       )}
 
       {note && (
-        <p className="mt-1.5 text-[11px] leading-relaxed text-muted line-clamp-2">
+        <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400 line-clamp-2">
           {note}
         </p>
       )}

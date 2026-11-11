@@ -27,9 +27,9 @@ const TopAttendance = ({
   );
 
   return (
-    <div className="bg-surface border border-line rounded-3xl p-5">
+    <div className="bg-white rounded-[22px] p-5 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
       <div className="flex items-center justify-between gap-3 mb-4">
-        <h3 className="text-base font-semibold text-ink tracking-tight">Top attendance</h3>
+        <h3 className="text-base font-semibold text-slate-900 tracking-tight">Top attendance</h3>
 
         {!loading && !error && ranked.length > PER_PAGE && (
           <div className="flex items-center gap-1.5">
@@ -38,13 +38,13 @@ const TopAttendance = ({
               onClick={() => setPage(p => Math.max(0, p - 1))}
               disabled={safePage === 0}
               aria-label="Previous page"
-              className="w-8 h-8 rounded-full bg-raised border border-line text-ink
-                         flex items-center justify-center hover:bg-line transition-colors
+              className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 text-slate-700
+                         flex items-center justify-center hover:bg-slate-100 transition-colors
                          disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-[11px] text-muted tabular-nums px-0.5">
+            <span className="text-[11px] text-slate-400 tabular-nums px-0.5">
               {safePage + 1}/{pageCount}
             </span>
             <button
@@ -52,8 +52,8 @@ const TopAttendance = ({
               onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
               disabled={safePage >= pageCount - 1}
               aria-label="Next page"
-              className="w-8 h-8 rounded-full bg-raised border border-line text-ink
-                         flex items-center justify-center hover:bg-line transition-colors
+              className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 text-slate-700
+                         flex items-center justify-center hover:bg-slate-100 transition-colors
                          disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-4 h-4" />
@@ -66,16 +66,16 @@ const TopAttendance = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {[0, 1, 2].map(i => (
             <div key={i} className="flex flex-col items-center animate-pulse">
-              <div className="w-16 h-16 rounded-full bg-raised" />
-              <div className="h-3 w-24 rounded bg-raised mt-3" />
-              <div className="h-2.5 w-20 rounded bg-raised mt-2" />
+              <div className="w-16 h-16 rounded-full bg-slate-100" />
+              <div className="h-3 w-24 rounded bg-slate-100 mt-3" />
+              <div className="h-2.5 w-20 rounded bg-slate-100 mt-2" />
             </div>
           ))}
         </div>
       )}
 
       {error && !loading && (
-        <p className="text-xs text-danger flex items-center gap-2">
+        <p className="text-xs text-rose-500 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error.message}
         </p>
@@ -129,7 +129,7 @@ const TopAttendance = ({
       )}
 
       {!loading && !error && ranked.length === 0 && (
-        <p className="text-xs text-muted py-8 text-center">No attendance published yet.</p>
+        <p className="text-xs text-slate-400 py-8 text-center">No attendance published yet.</p>
       )}
     </div>
   );

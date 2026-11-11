@@ -1,9 +1,9 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import AvatarUpload from '../Layout/AvatarUpload';
+import StaffRail from '../Layout/StaffRail';
 import StatCard from './StatCard';
 import TopAttendance from './TopAttendance';
 import HoursChart from './HoursChart';
@@ -22,8 +22,6 @@ import {
 } from 'date-fns';
 import {
   Clock,
-  LogOut,
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -32,7 +30,6 @@ import {
   CheckCircle2,
   Trash2,
   AlertCircle,
-  Users
 } from 'lucide-react';
 
 // Monthly target (160 hrs = standard month)
@@ -46,7 +43,7 @@ const PRESETS = [
 ];
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   // Pay rate now comes from userPrivate/{uid} via AuthContext; the literal is
   // only a fallback for the first render before the profile resolves.
@@ -717,106 +714,87 @@ const Dashboard = () => {
   const dayByKey = Object.fromEntries(daysList.map(d => [d.dateKey, d]));
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden bg-canvas text-ink">
+    <div className="h-full w-full flex overflow-hidden bg-slate-100 text-slate-900">
+      <StaffRail />
 
-      {/* Toast */}
-      {alert && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[999] w-[90%] max-w-md animate-fade-in-up">
-          <div className={`flex items-start gap-3 p-4 rounded-2xl border ${
-            alert.type === 'error'
-              ? 'bg-surface border-danger/40'
-              : 'bg-surface border-mint/40'
-          }`}>
-            {alert.type === 'error'
-              ? <AlertCircle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
-              : <CheckCircle2 className="w-5 h-5 text-mint-deep shrink-0 mt-0.5" />}
-            <div className="flex-1 text-left">
-              <h4 className={`font-semibold text-xs uppercase tracking-wider mb-0.5 ${alert.type === 'error' ? 'text-danger' : 'text-mint-deep'}`}>
-                {alert.type === 'error' ? 'Error' : 'Success'}
-              </h4>
-              <p className="text-xs text-ink-soft leading-relaxed">{alert.message}</p>
-            </div>
-            <button onClick={() => setAlert(null)} className="p-1 rounded-lg text-muted hover:text-ink cursor-pointer">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="flex-1 flex flex-col overflow-hidden">
 
-      {/* ------------------------------- HEADER ------------------------------- */}
-      <header className="shrink-0 px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-semibold text-ink tracking-tight">{headerDate}</h1>
-
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Link
-            to="/team"
-            title="My team"
-            className="w-10 h-10 rounded-full bg-surface border border-line flex items-center justify-center
-                       text-ink-soft hover:text-ink hover:bg-raised transition-colors"
-          >
-            <Users className="w-4 h-4" />
-          </Link>
-
-
-          <div className="flex items-center gap-2.5 pl-1">
-            <AvatarUpload size={36} />
-            <div className="hidden sm:block leading-tight">
-              <p className="text-[13px] font-medium text-ink truncate max-w-[140px]">{user?.name || 'User'}</p>
-              <p className="text-[11px] text-muted truncate max-w-[140px]">{user?.jobTitle || 'Staff'}</p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={logout}
-            title="Sign out"
-            className="w-10 h-10 rounded-full bg-surface border border-line flex items-center justify-center
-                       text-ink-soft hover:text-danger hover:bg-raised transition-colors cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* ---------------------------- SCROLL AREA ---------------------------- */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-5">
-
-        {/* Month-end cleanup warning */}
-        {isLastDayOfMonth && !isBannerDismissed && (
-          <div className="bg-surface border border-amber/30 rounded-3xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-semibold text-ink">Last day of the month</h4>
-                <p className="text-[11px] text-ink-soft mt-0.5">
-                  This month&apos;s records clear at midnight. Download your sheet before then.
-                </p>
+        {/* Toast */}
+        {alert && (
+          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[999] w-[90%] max-w-md animate-fade-in-up">
+            <div className={`flex items-start gap-3 p-4 rounded-2xl border bg-white shadow-[0_2px_12px_rgba(15,23,42,0.08)] ${
+              alert.type === 'error'
+                ? 'border-rose-200'
+                : 'border-emerald-200'
+            }`}>
+              {alert.type === 'error'
+                ? <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                : <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />}
+              <div className="flex-1 text-left">
+                <h4 className={`font-semibold text-xs uppercase tracking-wider mb-0.5 ${alert.type === 'error' ? 'text-rose-500' : 'text-emerald-600'}`}>
+                  {alert.type === 'error' ? 'Error' : 'Success'}
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">{alert.message}</p>
               </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={handleExportExcel}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-mint text-mint-ink text-[11px] font-semibold
-                           hover:bg-mint-deep transition-colors cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                Download sheet
-              </button>
-              <button
-                onClick={() => {
-                  sessionStorage.setItem('attendance_cleanup_banner_dismissed', 'true');
-                  setIsBannerDismissed(true);
-                }}
-                className="p-2 rounded-xl text-muted hover:text-ink hover:bg-raised transition-colors cursor-pointer"
-                title="Dismiss"
-              >
-                <X className="w-4 h-4" />
+              <button onClick={() => setAlert(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-900 cursor-pointer">
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* ------------------------------- HEADER ------------------------------- */}
+        <header className="shrink-0 px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
+          <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">{headerDate}</h1>
+
+          <div className="flex items-center gap-2.5">
+            <AvatarUpload size={36} />
+            <div className="hidden sm:block leading-tight">
+              <p className="text-[13px] font-medium text-slate-900 truncate max-w-[140px]">{user?.name || 'User'}</p>
+              <p className="text-[11px] text-slate-400 truncate max-w-[140px]">{user?.jobTitle || 'Staff'}</p>
+            </div>
+          </div>
+        </header>
+
+        {/* ---------------------------- SCROLL AREA ---------------------------- */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-5">
+
+          {/* Month-end cleanup warning */}
+          {isLastDayOfMonth && !isBannerDismissed && (
+            <div className="bg-white rounded-[22px] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900">Last day of the month</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    This month&apos;s records clear at midnight. Download your sheet before then.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-500 text-white text-[11px] font-semibold
+                             hover:bg-blue-600 transition-colors cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Download sheet
+                </button>
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem('attendance_cleanup_banner_dismissed', 'true');
+                    setIsBannerDismissed(true);
+                  }}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-colors cursor-pointer"
+                  title="Dismiss"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
           {/* ============================ LEFT ============================ */}
           <div className="lg:col-span-8 space-y-5">
@@ -880,38 +858,38 @@ const Dashboard = () => {
 
             {/* Assistant sits at the top of the column */}
             <Suspense
-              fallback={<div className="rounded-3xl bg-surface border border-line h-[188px] animate-pulse" />}
+              fallback={<div className="rounded-[22px] bg-white shadow-[0_2px_12px_rgba(15,23,42,0.05)] h-[188px] animate-pulse" />}
             >
               <RobotPanel onlineCount={online.length} teamCount={byActivity.length} />
             </Suspense>
 
             {/* Calendar — compact box, generous day circles */}
-            <div className="bg-surface border border-line rounded-3xl p-4">
+            <div className="bg-white rounded-[22px] p-4 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
               <div className="flex items-center justify-between gap-3 mb-3">
-                <h3 className="text-sm font-semibold text-ink tracking-tight">
+                <h3 className="text-sm font-semibold text-slate-900 tracking-tight">
                   {monthNames[currentMonth]} {currentYear}
                 </h3>
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={handlePrevMonth}
                     aria-label="Previous month"
-                    className="w-7 h-7 rounded-full bg-raised border border-line text-ink flex items-center justify-center
-                               hover:bg-line transition-colors cursor-pointer"
+                    className="w-7 h-7 rounded-full bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-center
+                               hover:bg-slate-100 transition-colors cursor-pointer"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={handleNextMonth}
                     aria-label="Next month"
-                    className="w-7 h-7 rounded-full bg-raised border border-line text-ink flex items-center justify-center
-                               hover:bg-line transition-colors cursor-pointer"
+                    className="w-7 h-7 rounded-full bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-center
+                               hover:bg-slate-100 transition-colors cursor-pointer"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-7 gap-x-1 gap-y-1 mb-1 text-center text-[11px] text-muted">
+              <div className="grid grid-cols-7 gap-x-1 gap-y-1 mb-1 text-center text-[11px] text-slate-400">
                 {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
                   <div key={`${d}-${i}`}>{d}</div>
                 ))}
@@ -927,7 +905,7 @@ const Dashboard = () => {
                     return (
                       <span
                         key={key}
-                        className="w-10 h-10 flex items-center justify-center text-[13px] text-muted/40 select-none"
+                        className="w-10 h-10 flex items-center justify-center text-[13px] text-slate-300 select-none"
                       >
                         {cellDate.getDate()}
                       </span>
@@ -949,12 +927,12 @@ const Dashboard = () => {
                   // Fill = state. Green for a logged day, red for a missed one.
                   // Today and selection are rings layered on top so they never
                   // hide the underlying state.
-                  let cls = 'text-ink hover:bg-raised';
-                  if (day.isWeekend) cls = 'text-ink-soft hover:bg-raised';
-                  if (worked) cls = 'bg-mint text-mint-ink font-semibold hover:opacity-90';
-                  if (missed) cls = 'bg-danger text-canvas font-semibold hover:opacity-90';
-                  if (isToday) cls += ' ring-2 ring-azure ring-offset-2 ring-offset-surface';
-                  if (isSelected) cls += ' ring-2 ring-ink ring-offset-2 ring-offset-surface';
+                  let cls = 'text-slate-700 hover:bg-slate-50';
+                  if (day.isWeekend) cls = 'text-slate-400 hover:bg-slate-50';
+                  if (worked) cls = 'bg-emerald-400 text-white font-semibold hover:opacity-90';
+                  if (missed) cls = 'bg-rose-500 text-white font-semibold hover:opacity-90';
+                  if (isToday) cls += ' ring-2 ring-blue-400 ring-offset-2 ring-offset-white';
+                  if (isSelected) cls += ' ring-2 ring-slate-900 ring-offset-2 ring-offset-white';
 
                   return (
                     <button
@@ -970,15 +948,15 @@ const Dashboard = () => {
                 })}
               </div>
 
-              <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-line">
-                <span className="flex items-center gap-1.5 text-[10px] text-ink-soft">
-                  <span className="w-2.5 h-2.5 rounded-full bg-mint" /> Logged
+              <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-100">
+                <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" /> Logged
                 </span>
-                <span className="flex items-center gap-1.5 text-[10px] text-ink-soft">
-                  <span className="w-2.5 h-2.5 rounded-full bg-danger" /> Missed
+                <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Missed
                 </span>
-                <span className="flex items-center gap-1.5 text-[10px] text-ink-soft">
-                  <span className="w-2.5 h-2.5 rounded-full ring-2 ring-azure ring-inset" /> Today
+                <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                  <span className="w-2.5 h-2.5 rounded-full ring-2 ring-blue-400 ring-inset" /> Today
                 </span>
               </div>
 
@@ -986,7 +964,7 @@ const Dashboard = () => {
               <button
                 onClick={handleExportExcel}
                 className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl
-                           bg-mint text-mint-ink text-[11px] font-semibold hover:bg-mint-deep
+                           bg-blue-500 text-white text-[11px] font-semibold hover:bg-blue-600
                            transition-colors cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -1001,31 +979,31 @@ const Dashboard = () => {
             >
               <div className="record-collapse-inner">
                 {renderedDay && (
-                  <div className="bg-surface border border-line rounded-3xl p-5">
+                  <div className="bg-white rounded-[22px] p-5 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h4 className="text-base font-semibold text-ink">
+                        <h4 className="text-base font-semibold text-slate-900">
                           {renderedDay.dateNum} {monthNames[currentMonth]} {currentYear}
                         </h4>
-                        <p className="text-[11px] text-muted mt-0.5">
+                        <p className="text-[11px] text-slate-400 mt-0.5">
                           {renderedDay.dayOfWeek}day · {renderedDay.isWeekend ? 'Weekend' : 'Working day'}
                         </p>
                       </div>
                       <button
                         onClick={() => setSelectedDay(null)}
                         aria-label="Close record"
-                        className="w-8 h-8 rounded-full bg-raised border border-line text-ink-soft
-                                   flex items-center justify-center hover:bg-line transition-colors cursor-pointer"
+                        className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 text-slate-500
+                                   flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
 
                     <form onSubmit={handleSave} className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-raised rounded-2xl border border-line">
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
                         <div className="text-left">
-                          <label className="text-xs font-medium text-ink block">Day off</label>
-                          <p className="text-[10px] text-muted">Mark as a non-working day</p>
+                          <label className="text-xs font-medium text-slate-900 block">Day off</label>
+                          <p className="text-[10px] text-slate-400">Mark as a non-working day</p>
                         </div>
                         <button
                           type="button"
@@ -1036,7 +1014,7 @@ const Dashboard = () => {
                             else { setInTime('08:30'); setOutTime('17:30'); }
                           }}
                           className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors
-                                      ${status === 'Day Off' ? 'bg-azure' : 'bg-line-strong'}`}
+                                      ${status === 'Day Off' ? 'bg-blue-500' : 'bg-slate-200'}`}
                         >
                           <span className={`pointer-events-none inline-block h-4 w-4 mt-0.5 transform rounded-full bg-white
                                             transition duration-200 ${status === 'Day Off' ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
@@ -1046,7 +1024,7 @@ const Dashboard = () => {
                       <div className={`space-y-4 transition-opacity ${status === 'Day Off' ? 'opacity-40 pointer-events-none' : ''}`}>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-medium text-muted uppercase tracking-wider block">In</label>
+                            <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">In</label>
                             <div className="relative">
                               <input
                                 type="text"
@@ -1056,14 +1034,14 @@ const Dashboard = () => {
                                 onBlur={handleInBlur}
                                 placeholder="08:30"
                                 disabled={status === 'Day Off'}
-                                className="w-full px-3 py-2 rounded-xl bg-raised border border-line text-ink text-xs font-mono
-                                           focus:outline-none focus:border-mint transition-colors pr-8"
+                                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 text-slate-900 text-xs font-mono
+                                           focus:outline-none focus:border-blue-400 transition-colors pr-8"
                               />
-                              <Clock className="w-3.5 h-3.5 text-muted absolute right-3 top-2.5 pointer-events-none" />
+                              <Clock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
                             </div>
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-medium text-muted uppercase tracking-wider block">Out</label>
+                            <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">Out</label>
                             <div className="relative">
                               <input
                                 type="text"
@@ -1073,10 +1051,10 @@ const Dashboard = () => {
                                 onBlur={handleOutBlur}
                                 placeholder="17:30"
                                 disabled={status === 'Day Off'}
-                                className="w-full px-3 py-2 rounded-xl bg-raised border border-line text-ink text-xs font-mono
-                                           focus:outline-none focus:border-mint transition-colors pr-8"
+                                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 text-slate-900 text-xs font-mono
+                                           focus:outline-none focus:border-blue-400 transition-colors pr-8"
                               />
-                              <Clock className="w-3.5 h-3.5 text-muted absolute right-3 top-2.5 pointer-events-none" />
+                              <Clock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
                             </div>
                           </div>
                         </div>
@@ -1088,8 +1066,8 @@ const Dashboard = () => {
                               type="button"
                               onClick={() => { setInTime(pIn); setOutTime(pOut); }}
                               disabled={status === 'Day Off'}
-                              className="py-2 px-1.5 rounded-xl bg-raised border border-line text-[10px] text-ink-soft
-                                         hover:border-mint hover:text-mint transition-colors cursor-pointer disabled:opacity-50"
+                              className="py-2 px-1.5 rounded-xl bg-slate-50 border border-slate-100 text-[10px] text-slate-500
+                                         hover:border-blue-300 hover:text-blue-600 transition-colors cursor-pointer disabled:opacity-50"
                             >
                               {label}
                             </button>
@@ -1098,7 +1076,7 @@ const Dashboard = () => {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-medium text-muted uppercase tracking-wider block">
+                        <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">
                           {status === 'Day Off' ? 'Reason' : 'Task info'}
                         </label>
                         <input
@@ -1106,21 +1084,21 @@ const Dashboard = () => {
                           value={reason}
                           onChange={(e) => setReason(e.target.value)}
                           placeholder={status === 'Day Off' ? 'e.g. Personal holiday' : 'e.g. Web development'}
-                          className="w-full px-3 py-2.5 rounded-xl bg-raised border border-line text-ink text-xs
-                                     focus:outline-none focus:border-mint transition-colors"
+                          className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-900 text-xs
+                                     focus:outline-none focus:border-blue-400 transition-colors"
                         />
                       </div>
 
-                      <div className="p-3 bg-raised rounded-2xl border border-line text-xs space-y-2">
-                        <div className="flex justify-between text-ink-soft">
+                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs space-y-2">
+                        <div className="flex justify-between text-slate-500">
                           <span>Hours</span>
-                          <span className="font-mono font-semibold text-ink">
+                          <span className="font-mono font-semibold text-slate-900">
                             {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).hours : '0.00')}
                           </span>
                         </div>
-                        <div className="flex justify-between text-ink-soft border-t border-line pt-2">
+                        <div className="flex justify-between text-slate-500 border-t border-slate-100 pt-2">
                           <span>Day pay</span>
-                          <span className="font-mono font-semibold text-mint-deep">
+                          <span className="font-mono font-semibold text-emerald-600">
                             Rs. {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00')}
                           </span>
                         </div>
@@ -1130,8 +1108,8 @@ const Dashboard = () => {
                         <button
                           type="submit"
                           disabled={isSaving}
-                          className="flex-1 py-2.5 rounded-xl bg-mint text-mint-ink text-xs font-semibold
-                                     hover:bg-mint-deep transition-colors cursor-pointer disabled:opacity-50
+                          className="flex-1 py-2.5 rounded-xl bg-blue-500 text-white text-xs font-semibold
+                                     hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-50
                                      flex items-center justify-center gap-1.5"
                         >
                           <Save className="w-3.5 h-3.5" />
@@ -1144,8 +1122,8 @@ const Dashboard = () => {
                             onClick={handleDelete}
                             disabled={isSaving}
                             title="Delete record"
-                            className="w-11 rounded-xl bg-raised border border-line text-danger
-                                       flex items-center justify-center hover:bg-line transition-colors cursor-pointer disabled:opacity-50"
+                            className="w-11 rounded-xl bg-slate-50 border border-slate-100 text-rose-500
+                                       flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1160,6 +1138,7 @@ const Dashboard = () => {
           </div>
         </div>
 
+        </div>
       </div>
     </div>
   );

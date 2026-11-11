@@ -10,12 +10,12 @@ import { Target, Clock, Sunrise, Zap } from 'lucide-react';
  */
 const Stat = ({ icon: Icon, label, value }) => (
   <div className="flex items-center gap-2 min-w-0">
-    <span className="w-7 h-7 shrink-0 rounded-lg bg-raised border border-line flex items-center justify-center">
-      <Icon className="w-3.5 h-3.5 text-ink-soft" />
+    <span className="w-7 h-7 shrink-0 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center">
+      <Icon className="w-3.5 h-3.5 text-slate-500" />
     </span>
     <div className="min-w-0">
-      <p className="text-[11px] font-semibold text-ink tabular-nums truncate">{value}</p>
-      <p className="text-[9px] text-muted truncate">{label}</p>
+      <p className="text-[11px] font-semibold text-slate-900 tabular-nums truncate">{value}</p>
+      <p className="text-[9px] text-slate-400 truncate">{label}</p>
     </div>
   </div>
 );
@@ -42,16 +42,16 @@ const MonthProgress = ({
   const needPerDay = daysLeft > 0 ? Math.max(target - hoursLogged, 0) / daysLeft : 0;
 
   return (
-    <div className="bg-surface border border-line rounded-3xl p-4">
+    <div className="bg-white rounded-[22px] p-4 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="text-sm font-semibold text-ink tracking-tight">Month progress</h3>
-          <p className="text-[10px] text-muted mt-0.5">{monthLabel}</p>
+          <h3 className="text-sm font-semibold text-slate-900 tracking-tight">Month progress</h3>
+          <p className="text-[10px] text-slate-400 mt-0.5">{monthLabel}</p>
         </div>
 
         <span
           className={`shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-full ${
-            onTrack ? 'bg-mint text-mint-ink' : 'bg-azure text-white'
+            onTrack ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
           }`}
         >
           {onTrack ? 'On track' : 'Behind pace'}
@@ -59,15 +59,15 @@ const MonthProgress = ({
       </div>
 
       <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-semibold text-ink tabular-nums tracking-tight">
+        <span className="text-2xl font-semibold text-slate-900 tabular-nums tracking-tight">
           {hoursLogged.toFixed(2)}
         </span>
-        <span className="text-[11px] text-muted tabular-nums">/ {target} hrs target</span>
+        <span className="text-[11px] text-slate-400 tabular-nums">/ {target} hrs target</span>
       </div>
 
-      <div className="mt-2.5 w-full bg-raised rounded-full h-2 overflow-hidden">
+      <div className="mt-2.5 w-full bg-slate-100 rounded-full h-2 overflow-hidden">
         <div
-          className={`digital-bar h-2 rounded-full ${onTrack ? 'bg-mint' : 'bg-azure'}`}
+          className={`digital-bar h-2 rounded-full ${onTrack ? 'bg-emerald-400' : 'bg-blue-400'}`}
           style={{ width: `${pct}%` }}
           role="progressbar"
           aria-valuenow={Math.round(pct)}
@@ -77,23 +77,23 @@ const MonthProgress = ({
         />
       </div>
 
-      <p className="mt-2 text-[10px] text-ink-soft">
+      <p className="mt-2 text-[10px] text-slate-500">
         {workingDaysElapsed > 0 ? (
           <>
-            On pace for <strong className="text-ink font-semibold tabular-nums">{projected.toFixed(0)} hrs</strong>
+            On pace for <strong className="text-slate-900 font-semibold tabular-nums">{projected.toFixed(0)} hrs</strong>
             {daysLeft > 0 && (
               <>
-                {' '}· <strong className="text-ink font-semibold tabular-nums">{needPerDay.toFixed(2)}h</strong>
-                <span className="text-muted"> needed per remaining day</span>
+                {' '}· <strong className="text-slate-900 font-semibold tabular-nums">{needPerDay.toFixed(2)}h</strong>
+                <span className="text-slate-400"> needed per remaining day</span>
               </>
             )}
           </>
         ) : (
-          <span className="text-muted">No working days elapsed yet this month.</span>
+          <span className="text-slate-400">No working days elapsed yet this month.</span>
         )}
       </p>
 
-      <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-line">
+      <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-100">
         <Stat
           icon={Clock}
           label="avg day"

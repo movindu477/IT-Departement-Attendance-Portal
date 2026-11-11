@@ -21,9 +21,9 @@ const COLORS = {
   face: 0x0b1f4b,       // face plate
   eye: 0xffffff,
   glow: 0x60a5fa,
-  grid: 0x2f3a52,
-  gridSub: 0x1b2233,
-  fog: 0x000000,
+  grid: 0xcbd5e1,
+  gridSub: 0xe2e8f0,
+  fog: 0xf8fafc,
 };
 
 const MAX_YAW = 0.62;    // ~35deg
@@ -78,7 +78,7 @@ export function createRobotScene(container, { reducedMotion = false } = {}) {
 
   // ------------------------------------------------------------------- scene
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(COLORS.fog, 5.0, 12.0); // matches the black card behind the canvas
+  scene.fog = new THREE.Fog(COLORS.fog, 5.0, 12.0); // matches the white card behind the canvas
 
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 60);
   camera.position.set(0, 1.30, 3.9);

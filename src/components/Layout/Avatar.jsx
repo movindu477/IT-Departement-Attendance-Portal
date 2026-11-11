@@ -17,20 +17,19 @@ export function Avatar({ user, size = 40, status = null, className = '' }) {
           src={user.avatar}
           alt={user.name || 'User avatar'}
           loading="lazy"
-          className="w-full h-full rounded-xl object-cover bg-subtle ring-2 ring-brand/25"
+          className="w-full h-full rounded-xl object-cover bg-slate-100"
         />
       ) : (
         <div
-          className="w-full h-full rounded-xl bg-gradient-to-tr from-brand to-brand-ink
-                     text-white flex items-center justify-center font-semibold
-                     ring-2 ring-brand/25"
+          className="w-full h-full rounded-xl bg-gradient-to-tr from-blue-400 to-indigo-500
+                     text-white flex items-center justify-center font-semibold"
           style={{ fontSize: size * 0.36 }}
         >
           {initials}
         </div>
       )}
       {statusColor && (
-        <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-surface ${statusColor}`} />
+        <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${statusColor}`} />
       )}
     </div>
   );

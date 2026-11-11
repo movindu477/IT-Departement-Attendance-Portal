@@ -29,19 +29,21 @@ const GaugeCard = ({ label, value, delta, tone = 'blue' }) => {
         )}
       </div>
 
-      <svg viewBox="0 0 100 54" className="w-full -mb-2">
-        <path d="M 7 50 A 43 43 0 0 1 93 50" fill="none" stroke="#F1F5F9" strokeWidth="9" strokeLinecap="round" pathLength="100" />
-        <path
-          d="M 7 50 A 43 43 0 0 1 93 50"
-          fill="none"
-          stroke={color}
-          strokeWidth="9"
-          strokeLinecap="round"
-          pathLength="100"
-          strokeDasharray={`${clamped} 100`}
-        />
+      <svg viewBox="0 0 100 52" className="w-full">
+        <path d="M 7 48 A 43 43 0 0 1 93 48" fill="none" stroke="#F1F5F9" strokeWidth="9" strokeLinecap="round" pathLength="100" />
+        {clamped > 0 && (
+          <path
+            d="M 7 48 A 43 43 0 0 1 93 48"
+            fill="none"
+            stroke={color}
+            strokeWidth="9"
+            strokeLinecap="round"
+            pathLength="100"
+            strokeDasharray={`${clamped} 100`}
+          />
+        )}
       </svg>
-      <span className="text-[26px] font-semibold text-slate-900 tabular-nums -mt-1">{clamped}%</span>
+      <span className="text-[26px] font-semibold text-slate-900 tabular-nums mt-3">{clamped}%</span>
     </div>
   );
 };

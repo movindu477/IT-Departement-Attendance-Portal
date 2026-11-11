@@ -4,8 +4,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useAdminData } from '../../hooks/useAdminData';
 import { useTeam } from '../../hooks/useTeam';
 import { Avatar } from '../Layout/Avatar';
+import logo2 from '../../assets/images/logo2.png';
 import {
-  Heart, Home, Users, FolderOpen, Share2, Settings, HelpCircle, LogOut, RefreshCw,
+  Home, Users, FolderOpen, Share2, Settings, HelpCircle, LogOut, RefreshCw,
 } from 'lucide-react';
 
 const PILL_TABS = [
@@ -53,8 +54,8 @@ const AdminLayout = () => {
       {/* Icon rail */}
       <aside className="hidden md:flex w-[72px] shrink-0 flex-col items-center justify-between py-5 bg-white border-r border-slate-100">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-blue-500 flex items-center justify-center text-white mb-2">
-            <Heart className="w-4.5 h-4.5" fill="currentColor" />
+          <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center overflow-hidden mb-2 p-1.5">
+            <img src={logo2} alt="APIIT" className="w-full h-full object-contain" />
           </div>
           {RAIL_ICONS.map(({ icon: Icon, to, end, label }) => (
             <NavLink
@@ -87,6 +88,9 @@ const AdminLayout = () => {
           >
             <LogOut className="w-4.5 h-4.5" />
           </button>
+          <div className="pt-2 mt-1 border-t border-slate-100" title={user?.name || 'Admin'}>
+            <Avatar user={user} size={36} />
+          </div>
         </div>
       </aside>
 

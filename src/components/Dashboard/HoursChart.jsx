@@ -26,20 +26,20 @@ const HoursChart = ({
   const avgDay = loggedDays > 0 ? weekTotal / loggedDays : 0;
 
   const TrendIcon = delta > 0.05 ? TrendingUp : delta < -0.05 ? TrendingDown : Minus;
-  const trendClass = delta > 0.05 ? 'text-mint-deep' : delta < -0.05 ? 'text-danger' : 'text-muted';
+  const trendClass = delta > 0.05 ? 'text-emerald-500' : delta < -0.05 ? 'text-rose-500' : 'text-slate-400';
 
   const targetPct = axisMax > 0 ? (standardDay / axisMax) * 100 : 0;
 
   return (
-    <div className="bg-surface border border-line rounded-3xl p-4 flex flex-col">
+    <div className="bg-white rounded-[22px] p-4 shadow-[0_2px_12px_rgba(15,23,42,0.05)] flex flex-col">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="text-sm font-semibold text-ink tracking-tight">This week</h3>
+          <h3 className="text-sm font-semibold text-slate-900 tracking-tight">This week</h3>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-semibold text-ink tabular-nums tracking-tight">
+            <span className="text-2xl font-semibold text-slate-900 tabular-nums tracking-tight">
               {weekTotal.toFixed(2)}
             </span>
-            <span className="text-[11px] text-muted">hrs logged</span>
+            <span className="text-[11px] text-slate-400">hrs logged</span>
           </div>
         </div>
 
@@ -47,7 +47,7 @@ const HoursChart = ({
           <span className={`shrink-0 flex items-center gap-1 text-[11px] font-medium ${trendClass}`}>
             <TrendIcon className="w-3.5 h-3.5" />
             {delta > 0 ? '+' : ''}{delta.toFixed(1)}h
-            <span className="text-muted font-normal">vs last</span>
+            <span className="text-slate-400 font-normal">vs last</span>
           </span>
         )}
       </div>
@@ -56,10 +56,10 @@ const HoursChart = ({
       <div className="relative flex-1 min-h-[92px] flex items-end justify-between gap-2 sm:gap-3">
         {/* Full-day target line */}
         <div
-          className="absolute inset-x-0 border-t border-dashed border-line-strong pointer-events-none"
+          className="absolute inset-x-0 border-t border-dashed border-slate-200 pointer-events-none"
           style={{ bottom: `${targetPct}%` }}
         >
-          <span className="absolute -top-2 right-0 text-[9px] text-muted bg-surface px-1">
+          <span className="absolute -top-2 right-0 text-[9px] text-slate-400 bg-white px-1">
             {standardDay}h
           </span>
         </div>
@@ -77,14 +77,14 @@ const HoursChart = ({
               >
                 {d.value > 0 ? (
                   <div
-                    className={`chart-grow w-full rounded-t-md ${full ? 'bg-mint' : 'bg-azure'}`}
+                    className={`chart-grow w-full rounded-t-md ${full ? 'bg-emerald-400' : 'bg-blue-400'}`}
                     style={{ height: `${pct}%` }}
                   />
                 ) : (
-                  <div className="w-full h-[3px] rounded-full bg-line" />
+                  <div className="w-full h-[3px] rounded-full bg-slate-100" />
                 )}
               </div>
-              <span className={`text-[10px] ${isToday ? 'text-ink font-semibold' : 'text-muted'}`}>
+              <span className={`text-[10px] ${isToday ? 'text-slate-900 font-semibold' : 'text-slate-400'}`}>
                 {d.label}
               </span>
             </div>
@@ -92,13 +92,13 @@ const HoursChart = ({
         })}
       </div>
 
-      <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-line">
-        <span className="text-[10px] text-ink-soft">
-          Avg <strong className="text-ink font-semibold tabular-nums">{avgDay.toFixed(2)}h</strong>/day
+      <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-100">
+        <span className="text-[10px] text-slate-500">
+          Avg <strong className="text-slate-900 font-semibold tabular-nums">{avgDay.toFixed(2)}h</strong>/day
         </span>
-        <span className="text-[10px] text-ink-soft">
-          <strong className="text-ink font-semibold tabular-nums">{metTarget}</strong>
-          <span className="text-muted"> of {data.length} full days</span>
+        <span className="text-[10px] text-slate-500">
+          <strong className="text-slate-900 font-semibold tabular-nums">{metTarget}</strong>
+          <span className="text-slate-400"> of {data.length} full days</span>
         </span>
       </div>
     </div>
