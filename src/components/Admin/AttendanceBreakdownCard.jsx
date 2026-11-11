@@ -1,13 +1,12 @@
 import React, { useMemo } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { AlignJustify } from 'lucide-react';
 import { daysInMonth, weekdayIndexOf, isWeekendIndex } from '../../utils/calendarUtils';
+import { useSmoothNumber } from '../../hooks/useSmoothNumber';
 
 /**
- * "Patient Demographics" equivalent - how this month's staff-days split
- * between weekday attendance, weekend attendance (the premium-rate case),
- * and days with nothing logged. Percentages are real; there are no
- * month-over-month deltas shown, since computing those would mean a second
- * month's worth of attendance queries for a cosmetic number.
+ * "Patient Demographics" equivalent on the Admin dashboard - stepped gradient
+ * skyline breakdown of Weekday attendance, Weekend attendance, and Unlogged
+ * days with smooth 2.2s count-up and bar growth animations.
  */
 function computeBreakdown(staff, monthDate) {
   const days = daysInMonth(monthDate);
@@ -38,43 +37,90 @@ const AttendanceBreakdownCard = ({ staff, monthDate }) => {
   );
 
   const pct = n => (totalSlots > 0 ? Math.round((n / totalSlots) * 100) : 0);
-  const widthPct = n => (totalSlots > 0 ? (n / totalSlots) * 100 : 0);
+
+  const animWeekday = useSmoothNumber(pct(weekdayPresent), 2200);
+  const animWeekend = useSmoothNumber(pct(weekendPresent), 2200);
+  const animRemaining = useSmoothNumber(pct(remaining), 2200);
+  const animBarFill = useSmoothNumber(100, 2200);
 
   return (
-    <div className="bg-white rounded-[22px] p-5 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
-      <div className="flex items-center justify-between mb-5">
-        <h3 className="text-[15px] font-semibold text-slate-900">Staff Demographics</h3>
-        <MoreHorizontal className="w-4 h-4 text-slate-300" />
+    <div className="bg-[#F2F4F7] rounded-[20px] p-5 border border-white/80 shadow-[0_2px_10px_rgba(15,23,42,0.03)] flex flex-col justify-between min-h-[218px] h-full">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <h3 className="text-[16px] font-medium text-[#1A1D21] tracking-tight">
+          Staff Demographics
+        </h3>
+        <button
+          type="button"
+          className="w-8 h-8 rounded-[10px] bg-[#E4E7EC] hover:bg-[#D8DCE3] text-[#2C3137] flex items-center justify-center transition-colors cursor-pointer"
+        >
+          <AlignJustify className="w-4 h-4" strokeWidth={1.8} />
+        </button>
       </div>
 
-      <div className="flex items-center flex-wrap gap-x-8 gap-y-3 mb-5">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-400" />
-          <span className="text-[12px] text-slate-500">Weekday</span>
-          <span className="text-[13px] font-semibold text-slate-900">{pct(weekdayPresent)}%</span>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mt-auto pt-3">
+        {/* Bottom-left legend matching the reference image */}
+        <div className="space-y-2.5 text-[12px] text-[#374151] shrink-0 pb-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#4A90E2]" />
+            <span>Weekday</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#F5A623]" />
+            <span>No Entry</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#95D600]" />
+            <span>Weekend</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-amber-400" />
-          <span className="text-[12px] text-slate-500">Weekend</span>
-          <span className="text-[13px] font-semibold text-slate-900">{pct(weekendPresent)}%</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-[12px] text-slate-500">No entry</span>
-          <span className="text-[13px] font-semibold text-slate-900">{pct(remaining)}%</span>
-        </div>
-      </div>
 
-      <div className="flex h-3 w-full rounded-full overflow-hidden bg-slate-100">
-        {weekdayPresent > 0 && (
-          <div className="bg-gradient-to-r from-blue-400 to-blue-300" style={{ width: `${widthPct(weekdayPresent)}%` }} />
-        )}
-        {weekendPresent > 0 && (
-          <div className="bg-gradient-to-r from-amber-400 to-amber-300" style={{ width: `${widthPct(weekendPresent)}%` }} />
-        )}
-        {remaining > 0 && (
-          <div className="bg-gradient-to-r from-emerald-400 to-emerald-300" style={{ width: `${widthPct(remaining)}%` }} />
-        )}
+        {/* 3 contiguous stepped gradient bars matching "Patient Demographics" */}
+        <div className="flex-1 grid grid-cols-3 items-end">
+          {/* Step 1: Blue (Weekday) */}
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5 text-[11px] text-[#374151] mb-1">
+              <span className="w-2 h-2 rounded-full bg-[#4A90E2]" />
+              <span className="truncate">Weekday: {weekdayPresent}d</span>
+            </div>
+            <span className="text-[24px] font-normal text-[#1A1D21] leading-none mb-2.5 tabular-nums">
+              {Math.round(animWeekday)}%
+            </span>
+            <div
+              className="w-full border-t-[3.5px] border-[#4A90E2] bg-gradient-to-b from-[#4A90E2]/40 via-[#4A90E2]/15 to-transparent"
+              style={{ height: `${Math.round((animBarFill / 100) * 42)}px` }}
+            />
+          </div>
+
+          {/* Step 2: Orange (Tallest middle step) */}
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5 text-[11px] text-[#374151] mb-1">
+              <span className="w-2 h-2 rounded-full bg-[#F5A623]" />
+              <span className="truncate">No Entry: {remaining}d</span>
+            </div>
+            <span className="text-[24px] font-normal text-[#1A1D21] leading-none mb-2.5 tabular-nums">
+              {Math.round(animRemaining)}%
+            </span>
+            <div
+              className="w-full border-t-[3.5px] border-[#F5A623] bg-gradient-to-b from-[#F5A623]/40 via-[#F5A623]/15 to-transparent"
+              style={{ height: `${Math.round((animBarFill / 100) * 88)}px` }}
+            />
+          </div>
+
+          {/* Step 3: Lime-Green (Weekend) */}
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5 text-[11px] text-[#374151] mb-1">
+              <span className="w-2 h-2 rounded-full bg-[#95D600]" />
+              <span className="truncate">Weekend: {weekendPresent}d</span>
+            </div>
+            <span className="text-[24px] font-normal text-[#1A1D21] leading-none mb-2.5 tabular-nums">
+              {Math.round(animWeekend)}%
+            </span>
+            <div
+              className="w-full border-t-[3.5px] border-[#95D600] bg-gradient-to-b from-[#95D600]/40 via-[#95D600]/15 to-transparent"
+              style={{ height: `${Math.round((animBarFill / 100) * 26)}px` }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

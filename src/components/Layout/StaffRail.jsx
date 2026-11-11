@@ -1,64 +1,134 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import logo2 from '../../assets/images/logo2.png';
-import { Home, Users, Settings, HelpCircle, LogOut } from 'lucide-react';
-import { Avatar } from './Avatar';
+import {
+  Home,
+  LayoutGrid,
+  ClipboardList,
+  Users,
+  Calendar,
+  Target,
+  Headphones,
+  LogOut,
+} from 'lucide-react';
 
-/** Icon rail shared by the staff Dashboard and Team page - same visual
- *  language as the admin panel's rail (AdminLayout.jsx), so both sides of
- *  the app read as one design system. */
-const StaffRail = () => {
-  const { user, logout } = useAuth();
+/**
+ * Floating rounded-square icon rail matching the reference UI design:
+ * sits directly on the #E2E5EC canvas with individual #F2F4F7 rounded-square
+ * tiles and a solid #141619 dark tile for the active view.
+ */
+const StaffRail = ({ activeSection = 'dashboard', onSelectSection }) => {
+  const { logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isTeamPage = location.pathname === '/team';
+
+  const handleNav = (section, path = '/') => {
+    if (location.pathname !== path) {
+      navigate(path);
+    }
+    if (onSelectSection) {
+      onSelectSection(section);
+    }
+  };
+
+  const tileBase =
+    'w-11 h-11 rounded-[14px] flex items-center justify-center transition-all duration-200 cursor-pointer';
+  const tileInactive =
+    'bg-[#F2F4F7] text-[#2C3137] border border-white/80 shadow-[0_2px_6px_rgba(15,23,42,0.03)] hover:bg-white';
+  const tileActive =
+    'bg-[#141619] text-white shadow-[0_4px_12px_rgba(20,22,25,0.22)]';
 
   return (
-    <aside className="hidden md:flex w-[72px] shrink-0 flex-col items-center justify-between py-5 bg-white border-r border-slate-100">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center overflow-hidden mb-2 p-1.5">
-          <img src={logo2} alt="APIIT" className="w-full h-full object-contain" />
+    <aside className="hidden md:flex w-[72px] shrink-0 flex-col items-center justify-between pb-5 pt-3.5 pl-2 select-none">
+      <div className="flex flex-col items-center">
+        {/* Top-left brand mark aligned with the top header bar */}
+        <button
+          type="button"
+          onClick={() => handleNav('dashboard', '/')}
+          title="APIIT Attendance Portal"
+          className="h-[52px] flex items-center justify-center mb-3 cursor-pointer"
+        >
+          <img src={logo2} alt="APIIT" className="w-9 h-9 object-contain" />
+        </button>
+
+        {/* Main 6-icon stack matching the reference image */}
+        <div className="flex flex-col items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => handleNav('overview', '/')}
+            title="Home Overview"
+            className={`${tileBase} ${!isTeamPage && activeSection === 'overview' ? tileActive : tileInactive}`}
+          >
+            <Home className="w-[18px] h-[18px]" strokeWidth={1.9} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNav('dashboard', '/')}
+            title="Dashboard"
+            className={`${tileBase} ${!isTeamPage && activeSection === 'dashboard' ? tileActive : tileInactive}`}
+          >
+            <LayoutGrid className="w-[18px] h-[18px]" strokeWidth={1.9} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNav('attendance', '/')}
+            title="Attendance Overview"
+            className={`${tileBase} ${!isTeamPage && activeSection === 'attendance' ? tileActive : tileInactive}`}
+          >
+            <ClipboardList className="w-[18px] h-[18px]" strokeWidth={1.9} />
+          </button>
+
+          <NavLink
+            to="/team"
+            title="My Team"
+            className={({ isActive }) => `${tileBase} ${isActive ? tileActive : tileInactive}`}
+          >
+            <Users className="w-[18px] h-[18px]" strokeWidth={1.9} />
+          </NavLink>
+
+          <button
+            type="button"
+            onClick={() => handleNav('schedule', '/')}
+            title="Monthly Schedule & Calendar"
+            className={`${tileBase} ${!isTeamPage && activeSection === 'schedule' ? tileActive : tileInactive}`}
+          >
+            <Calendar className="w-[18px] h-[18px]" strokeWidth={1.9} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNav('insights', '/')}
+            title="Hours & Pace Insights"
+            className={`${tileBase} ${!isTeamPage && activeSection === 'insights' ? tileActive : tileInactive}`}
+          >
+            <Target className="w-[18px] h-[18px]" strokeWidth={1.9} />
+          </button>
         </div>
-        <NavLink
-          to="/"
-          end
-          title="Dashboard"
-          className={({ isActive }) =>
-            `w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${
-              isActive ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-            }`
-          }
-        >
-          <Home className="w-4.5 h-4.5" />
-        </NavLink>
-        <NavLink
-          to="/team"
-          title="My team"
-          className={({ isActive }) =>
-            `w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${
-              isActive ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-            }`
-          }
-        >
-          <Users className="w-4.5 h-4.5" />
-        </NavLink>
       </div>
 
-      <div className="flex flex-col items-center gap-3">
-        <button title="Help" className="w-10 h-10 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer">
-          <HelpCircle className="w-4.5 h-4.5" />
-        </button>
-        <button title="Settings" className="w-10 h-10 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer">
-          <Settings className="w-4.5 h-4.5" />
-        </button>
+      {/* Bottom 2-icon stack matching the reference image */}
+      <div className="flex flex-col items-center gap-2.5">
         <button
+          type="button"
+          onClick={() => handleNav('schedule', '/')}
+          title="Support & Quick Log"
+          className={`${tileBase} ${tileInactive}`}
+        >
+          <Headphones className="w-[18px] h-[18px]" strokeWidth={1.9} />
+        </button>
+
+        <button
+          type="button"
           title="Sign out"
           onClick={logout}
-          className="w-10 h-10 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors cursor-pointer"
+          className={`${tileBase} ${tileInactive} hover:text-rose-600 hover:border-rose-100`}
         >
-          <LogOut className="w-4.5 h-4.5" />
+          <LogOut className="w-[18px] h-[18px]" strokeWidth={1.9} />
         </button>
-        <div className="pt-2 mt-1 border-t border-slate-100" title={user?.name || 'Me'}>
-          <Avatar user={user} size={36} />
-        </div>
       </div>
     </aside>
   );

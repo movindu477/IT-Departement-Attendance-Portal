@@ -17,11 +17,11 @@ export function Avatar({ user, size = 40, status = null, className = '' }) {
           src={user.avatar}
           alt={user.name || 'User avatar'}
           loading="lazy"
-          className="w-full h-full rounded-xl object-cover bg-slate-100"
+          className="w-full h-full rounded-[10px] object-cover bg-slate-100"
         />
       ) : (
         <div
-          className="w-full h-full rounded-xl bg-gradient-to-tr from-blue-400 to-indigo-500
+          className="w-full h-full rounded-[10px] bg-gradient-to-tr from-blue-400 to-indigo-500
                      text-white flex items-center justify-center font-semibold"
           style={{ fontSize: size * 0.36 }}
         >

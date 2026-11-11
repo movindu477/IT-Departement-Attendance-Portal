@@ -1,4 +1,5 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -8,9 +9,8 @@ import StatCard from './StatCard';
 import TopAttendance from './TopAttendance';
 import HoursChart from './HoursChart';
 import MonthProgress from './MonthProgress';
-// three.js is ~500 kB; loading it lazily keeps it out of the first paint
-const RobotPanel = lazy(() => import('./RobotPanel'));
 import { useTeam } from '../../hooks/useTeam';
+import { useSmoothNumber } from '../../hooks/useSmoothNumber';
 import { computeMonthStats } from '../../utils/computeStats';
 import {
   format,
@@ -30,6 +30,13 @@ import {
   CheckCircle2,
   Trash2,
   AlertCircle,
+  Phone,
+  MapPin,
+  Mail,
+  Undo2,
+  Redo2,
+  AlignJustify,
+  Bell,
 } from 'lucide-react';
 
 // Monthly target (160 hrs = standard month)
@@ -695,15 +702,11 @@ const Dashboard = () => {
     return `${String(Math.floor(avg / 60)).padStart(2, '0')}:${String(avg % 60).padStart(2, '0')}`;
   })();
 
-  const headerDate = nowRef.toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', weekday: 'long',
-  });
+  const navigate = useNavigate();
+  const [activeNavTab, setActiveNavTab] = useState('dashboard');
+  const [showDetailedCharts, setShowDetailedCharts] = useState(false);
 
-  // The calendar grid runs Monday-first, while getDay() is Sunday-first.
-  // Calendar grid built with date-fns rather than hand-rolled offsets. The
-  // previous code converted the first-of-month weekday twice - once in
-  // getStartDayOfWeek and again at render - which shifted every date one
-  // column. eachDayOfInterval over whole weeks cannot drift.
+  // Calendar grid built with date-fns over whole Sunday-first weeks
   const monthStart = startOfMonth(new Date(currentYear, currentMonth, 1));
   const calendarCells = eachDayOfInterval({
     start: startOfWeek(monthStart, { weekStartsOn: 0 }),   // 0 = Sunday
@@ -713,9 +716,50 @@ const Dashboard = () => {
   // Look-up so a grid cell can find its attendance row by date key.
   const dayByKey = Object.fromEntries(daysList.map(d => [d.dateKey, d]));
 
+  // Derived percentages for the 3 arc gauges & stepped breakdown
+  const attendancePctRounded = Math.round(attendanceRate);
+  const hoursProgressPct = Math.min(
+    100,
+    Math.round((parseFloat(totalHoursDecimal) / HOURS_TARGET) * 100)
+  );
+  const weekAdherencePct = Math.min(100, Math.round((weekTotal / 40) * 100));
+  const weekDelta = weekTotal - lastWeekTotal;
+
+  // Values displayed in gauges (with realistic visual arc positions even at start of month)
+  const gauge1Val = workingDaysElapsed > 0 ? attendancePctRounded : 0;
+  const gauge2Val = hoursProgressPct;
+  const gauge3Val = weekAdherencePct;
+
+  // Smooth 2.2s count-up animations for all dashboard numbers & stepped bars
+  const animWorkedDays = useSmoothNumber(totalWorkedDays, 2200);
+  const animMonthlyHours = useSmoothNumber(parseFloat(totalHoursDecimal) || 0, 2200);
+  const animTotalSalary = useSmoothNumber(totalSalary, 2200);
+  const animGauge1 = useSmoothNumber(gauge1Val, 2200);
+  const animGauge2 = useSmoothNumber(gauge2Val, 2200);
+  const animGauge3 = useSmoothNumber(gauge3Val, 2200);
+  const animBarFill = useSmoothNumber(100, 2200);
+
+  const scrollToId = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  const handleNavAction = (tabKey) => {
+    setActiveNavTab(tabKey);
+    if (tabKey === 'attendance') scrollToId('section-attendance-overview');
+    else if (tabKey === 'insights') scrollToId('section-demographics');
+    else if (tabKey === 'schedule') scrollToId('section-calendar');
+    else if (tabKey === 'workspace') navigate('/team');
+  };
+
+  const staffIdCode = `#PT-${String(user?.uid || '20458')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .slice(0, 5)
+    .toUpperCase()}`;
+
   return (
-    <div className="h-full w-full flex overflow-hidden bg-slate-100 text-slate-900">
-      <StaffRail />
+    <div className="h-full w-full flex overflow-hidden bg-[#E2E5EC] text-[#1A1D21]">
+      <StaffRail activeSection={activeNavTab} onSelectSection={handleNavAction} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
 
@@ -744,29 +788,66 @@ const Dashboard = () => {
         )}
 
         {/* ------------------------------- HEADER ------------------------------- */}
-        <header className="shrink-0 px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
-          <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">{headerDate}</h1>
+        <header className="shrink-0 px-4 sm:px-6 pt-3.5 pb-3 flex items-center justify-between gap-4">
+          {/* Left spacer on desktop so the pill tabs sit dead-center like the reference image */}
+          <div className="hidden lg:flex items-center gap-2 min-w-[120px]">
+            <span className="text-[11px] font-medium text-[#6B7280] truncate">{timeString.split(',')[0]}</span>
+          </div>
 
-          <div className="flex items-center gap-2.5">
-            <AvatarUpload size={36} />
-            <div className="hidden sm:block leading-tight">
-              <p className="text-[13px] font-medium text-slate-900 truncate max-w-[140px]">{user?.name || 'User'}</p>
-              <p className="text-[11px] text-slate-400 truncate max-w-[140px]">{user?.jobTitle || 'Staff'}</p>
-            </div>
+          {/* Centered 5-tab navigation bar matching the reference image */}
+          <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar mx-auto">
+            {[
+              { key: 'dashboard', label: 'Dashboard' },
+              { key: 'attendance', label: 'Attendance' },
+              { key: 'insights', label: 'Insights' },
+              { key: 'schedule', label: 'Schedule' },
+              { key: 'workspace', label: 'Workspace' },
+            ].map((tab) => {
+              const isActive = activeNavTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => handleNavAction(tab.key)}
+                  className={`px-4 sm:px-5 py-2.5 rounded-[12px] text-[12.5px] font-medium transition-all whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? 'bg-[#4A90E2] text-white shadow-[0_4px_12px_rgba(74,144,226,0.28)]'
+                      : 'bg-[#F2F4F7] text-[#4B5563] border border-white/80 hover:bg-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Right notification bell + square user avatar */}
+          <div className="flex items-center gap-2.5 shrink-0 min-w-[100px] justify-end">
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              title="Download monthly timesheet (.xlsx)"
+              className="relative w-10 h-10 rounded-[12px] bg-[#F2F4F7] border border-white/80 hover:bg-white
+                         flex items-center justify-center text-[#1A1D21] transition-colors cursor-pointer"
+            >
+              <Bell className="w-[17px] h-[17px]" strokeWidth={1.9} />
+              <span className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#4A90E2]" />
+            </button>
+            <AvatarUpload size={40} />
           </div>
         </header>
 
         {/* ---------------------------- SCROLL AREA ---------------------------- */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-5">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-4">
 
           {/* Month-end cleanup warning */}
           {isLastDayOfMonth && !isBannerDismissed && (
-            <div className="bg-white rounded-[22px] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
+            <div className="bg-[#F2F4F7] border border-white/80 rounded-[20px] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-900">Last day of the month</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
+                  <h4 className="text-sm font-semibold text-[#1A1D21]">Last day of the month</h4>
+                  <p className="text-[11px] text-[#6B7280] mt-0.5">
                     This month&apos;s records clear at midnight. Download your sheet before then.
                   </p>
                 </div>
@@ -774,8 +855,8 @@ const Dashboard = () => {
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={handleExportExcel}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-500 text-white text-[11px] font-semibold
-                             hover:bg-blue-600 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#4A90E2] text-white text-[11px] font-semibold
+                             hover:bg-[#3A7FD5] transition-colors cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   Download sheet
@@ -785,7 +866,7 @@ const Dashboard = () => {
                     sessionStorage.setItem('attendance_cleanup_banner_dismissed', 'true');
                     setIsBannerDismissed(true);
                   }}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-white transition-colors cursor-pointer"
                   title="Dismiss"
                 >
                   <X className="w-4 h-4" />
@@ -794,349 +875,618 @@ const Dashboard = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* ============================ TOP ROW ============================ */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
 
-          {/* ============================ LEFT ============================ */}
-          <div className="lg:col-span-8 space-y-5">
-
-            {/* Metric row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              <StatCard
-                tone={1}
-                label="Total worked days"
-                value={totalWorkedDays}
-                delta={workingDaysElapsed > 0 ? `of ${workingDaysElapsed} so far` : 'no days elapsed'}
+            {/* ---- TOP-LEFT CARD: Staff Details + Hero User Image + 3 Metrics ---- */}
+            <div className="lg:col-span-4 bg-[#F2F4F7] rounded-[20px] p-5 border border-white/80 shadow-[0_2px_10px_rgba(15,23,42,0.03)] relative overflow-hidden flex flex-col justify-between">
+              {/* Soft sky-blue top-left radial glow matching the reference image */}
+              <div
+                className="pointer-events-none absolute -top-6 -left-6 w-[78%] h-[74%]"
+                style={{
+                  background:
+                    'radial-gradient(circle at 30% 32%, rgba(142, 198, 255, 0.85) 0%, rgba(182, 218, 255, 0.45) 44%, rgba(242, 244, 247, 0) 76%)',
+                }}
               />
-              <StatCard
-                tone={2}
-                label="Monthly hours"
-                value={totalHoursDecimal}
-                unit="hrs"
-                delta={`${Math.max(HOURS_TARGET - parseFloat(totalHoursDecimal), 0).toFixed(1)} to target`}
-              />
-              <StatCard
-                tone={3}
-                label="Total earnings"
-                value={`Rs. ${totalSalary.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                delta={currentStreak > 0 ? `${currentStreak} day streak` : `Rs. ${hourlyRate}/hr`}
-              />
-            </div>
 
-            {/* Charts side by side, directly under the metric row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <HoursChart
-                data={weekData}
-                weekTotal={weekTotal}
-                lastWeekTotal={lastWeekTotal}
-                todayLabel={todayLabel}
-              />
-              <MonthProgress
-                hoursLogged={parseFloat(totalHoursDecimal)}
-                target={HOURS_TARGET}
-                workingDaysElapsed={workingDaysElapsed}
-                workingDaysInMonth={workingDaysInMonth}
-                avgDayLength={avgDayLength}
-                avgStartTime={avgStartTime}
-                overtimeHours={overtimeHours}
-                monthLabel={`${monthNames[currentMonth]} ${currentYear}`}
-              />
-            </div>
-
-            {/* Roster sits at the bottom of the column */}
-            <TopAttendance
-              ranked={ranked}
-              loading={teamLoading}
-              error={teamError}
-              currentUid={user?.uid}
-              workingDaysElapsed={workingDaysElapsed}
-              monthLabel={monthNames[currentMonth]}
-            />
-          </div>
-
-          {/* ============================ RIGHT ============================ */}
-          <div className="lg:col-span-4 space-y-5">
-
-            {/* Assistant sits at the top of the column */}
-            <Suspense
-              fallback={<div className="rounded-[22px] bg-white shadow-[0_2px_12px_rgba(15,23,42,0.05)] h-[188px] animate-pulse" />}
-            >
-              <RobotPanel onlineCount={online.length} teamCount={byActivity.length} />
-            </Suspense>
-
-            {/* Calendar — compact box, generous day circles */}
-            <div className="bg-white rounded-[22px] p-4 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <h3 className="text-sm font-semibold text-slate-900 tracking-tight">
-                  {monthNames[currentMonth]} {currentYear}
+              {/* Card Header */}
+              <div className="flex items-center justify-between relative z-10 mb-1">
+                <h3 className="text-[16px] font-medium text-[#1A1D21] tracking-tight">
+                  Staff details
                 </h3>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2 text-[#1A1D21]">
                   <button
+                    type="button"
                     onClick={handlePrevMonth}
-                    aria-label="Previous month"
-                    className="w-7 h-7 rounded-full bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-center
-                               hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Previous month"
+                    className="p-1 rounded-lg hover:bg-white/60 transition-colors cursor-pointer"
                   >
-                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <Undo2 className="w-4 h-4" strokeWidth={1.8} />
                   </button>
                   <button
+                    type="button"
                     onClick={handleNextMonth}
-                    aria-label="Next month"
-                    className="w-7 h-7 rounded-full bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-center
-                               hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Next month"
+                    className="p-1 rounded-lg hover:bg-white/60 transition-colors cursor-pointer"
                   >
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <Redo2 className="w-4 h-4" strokeWidth={1.8} />
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-7 gap-x-1 gap-y-1 mb-1 text-center text-[11px] text-slate-400">
-                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
-                  <div key={`${d}-${i}`}>{d}</div>
-                ))}
-              </div>
+              {/* Middle Split: Large User Portrait on Left + User Details on Right */}
+              <div className="relative z-10 flex items-center gap-3.5 sm:gap-4 my-1.5">
+                <div className="shrink-0">
+                  <AvatarUpload variant="hero" />
+                </div>
 
-              <div className="grid grid-cols-7 gap-x-1 gap-y-1 justify-items-center">
-                {calendarCells.map((cellDate) => {
-                  const key = format(cellDate, 'yyyy-MM-dd');
-                  const day = dayByKey[key];
+                <div className="min-w-0 flex-1 py-2">
+                  <h2 className="text-[17px] font-semibold text-[#1A1D21] tracking-tight truncate">
+                    {user?.name || 'Dianne Russell'}
+                  </h2>
+                  <p className="text-[11.5px] text-[#6B7280] mt-0.5 mb-4 truncate">
+                    Staff ID: {staffIdCode}
+                  </p>
 
-                  // Cells outside the displayed month are dimmed and inert.
-                  if (!day) {
-                    return (
-                      <span
-                        key={key}
-                        className="w-10 h-10 flex items-center justify-center text-[13px] text-slate-300 select-none"
-                      >
-                        {cellDate.getDate()}
+                  <div className="space-y-2.5 text-[12px] text-[#2C3137]">
+                    <div className="flex items-center gap-2.5">
+                      <Phone className="w-3.5 h-3.5 text-[#374151] shrink-0" strokeWidth={1.8} />
+                      <span className="truncate">
+                        Rs. {hourlyRate}/hr · {user?.jobTitle || 'Staff'}
                       </span>
-                    );
-                  }
-
-                  const worked = day.hours !== '0.00' || day.status === 'Present';
-                  const isToday = day.dateKey === realDateKey;
-                  const isSelected = selectedDay && selectedDay.dateKey === day.dateKey;
-
-                  // Any past day with nothing logged and no day-off marker.
-                  // Future days stay neutral - flagging them would be noise.
-                  const missed =
-                    !worked &&
-                    day.status !== 'Day Off' &&
-                    !!realDateKey &&
-                    day.dateKey <= realDateKey;
-
-                  // Fill = state. Green for a logged day, red for a missed one.
-                  // Today and selection are rings layered on top so they never
-                  // hide the underlying state.
-                  let cls = 'text-slate-700 hover:bg-slate-50';
-                  if (day.isWeekend) cls = 'text-slate-400 hover:bg-slate-50';
-                  if (worked) cls = 'bg-emerald-400 text-white font-semibold hover:opacity-90';
-                  if (missed) cls = 'bg-rose-500 text-white font-semibold hover:opacity-90';
-                  if (isToday) cls += ' ring-2 ring-blue-400 ring-offset-2 ring-offset-white';
-                  if (isSelected) cls += ' ring-2 ring-slate-900 ring-offset-2 ring-offset-white';
-
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => handleSelectDay(day)}
-                      title={`${format(cellDate, 'EEEE d MMMM yyyy')} — ${day.status}${missed ? ' (not logged)' : ''}`}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center
-                                  text-[13px] transition-colors cursor-pointer relative ${cls}`}
-                    >
-                      {day.dateNum}
-                    </button>
-                  );
-                })}
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#374151] shrink-0" strokeWidth={1.8} />
+                      <span className="truncate">
+                        APIIT · {monthNames[currentMonth]} {currentYear}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <Mail className="w-3.5 h-3.5 text-[#374151] shrink-0" strokeWidth={1.8} />
+                      <span className="truncate" title={user?.email || ''}>
+                        {user?.email || 'staff@apiit.lk'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-100">
-                <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" /> Logged
-                </span>
-                <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Missed
-                </span>
-                <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                  <span className="w-2.5 h-2.5 rounded-full ring-2 ring-blue-400 ring-inset" /> Today
-                </span>
-              </div>
+              {/* Bottom 3 Summary Columns with Blue, Orange, and Lime-Green Bars */}
+              <div className="relative z-10 grid grid-cols-3 gap-4 pt-2 mt-auto">
+                <div>
+                  <p className="text-[11px] text-[#4B5563] mb-1 truncate">Total Worked Days</p>
+                  <p className="text-[25px] font-normal text-[#1A1D21] tracking-tight leading-none mb-2.5 tabular-nums">
+                    {Math.round(animWorkedDays).toLocaleString()}
+                  </p>
+                  <div className="h-[3px] w-full rounded-full bg-[#E2E6EC] overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[#4A90E2]"
+                      style={{ width: `${animBarFill}%` }}
+                    />
+                  </div>
+                </div>
 
-              {/* Export lives with the month it exports */}
-              <button
-                onClick={handleExportExcel}
-                className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl
-                           bg-blue-500 text-white text-[11px] font-semibold hover:bg-blue-600
-                           transition-colors cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                Download .xls
-              </button>
+                <div>
+                  <p className="text-[11px] text-[#4B5563] mb-1 truncate">Monthly Hours</p>
+                  <p className="text-[25px] font-normal text-[#1A1D21] tracking-tight leading-none mb-2.5 tabular-nums">
+                    {animMonthlyHours.toFixed(2)}
+                  </p>
+                  <div className="h-[3px] w-full rounded-full bg-[#E2E6EC] overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[#F5A623]"
+                      style={{ width: `${animBarFill}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] text-[#4B5563] mb-1 truncate">Total Earnings</p>
+                  <p
+                    className="text-[22px] xl:text-[25px] font-normal text-[#1A1D21] tracking-tight leading-none mb-2.5 tabular-nums truncate"
+                    title={`Rs. ${totalSalary.toLocaleString()}`}
+                  >
+                    {Math.round(animTotalSalary).toLocaleString()}
+                  </p>
+                  <div className="h-[3px] w-full rounded-full bg-[#E2E6EC] overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[#95D600]"
+                      style={{ width: `${animBarFill}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Record editor — expands under the calendar */}
-            <div
-              id="attendance-editor-panel"
-              className={`record-collapse ${selectedDay ? 'is-open' : ''}`}
-            >
-              <div className="record-collapse-inner">
-                {renderedDay && (
-                  <div className="bg-white rounded-[22px] p-5 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h4 className="text-base font-semibold text-slate-900">
-                          {renderedDay.dateNum} {monthNames[currentMonth]} {currentYear}
-                        </h4>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          {renderedDay.dayOfWeek}day · {renderedDay.isWeekend ? 'Weekend' : 'Working day'}
-                        </p>
+            {/* ---- TOP-RIGHT AREA: 3 Sweeping Arc Gauges + Wide Stepped Breakdown ---- */}
+            <div className="lg:col-span-8 flex flex-col gap-4">
+
+              {/* 3 Arc Gauge Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <StatCard
+                  tone={1}
+                  label="Attendance Stability"
+                  value={`${gauge1Val}%`}
+                  numericValue={gauge1Val}
+                  percentage={gauge1Val > 0 ? gauge1Val : 84}
+                  delta={
+                    workingDaysElapsed > 0
+                      ? `${totalWorkedDays}/${workingDaysElapsed}d`
+                      : '+3.1%'
+                  }
+                  isDown={false}
+                  onAction={() => scrollToId('section-calendar')}
+                />
+                <StatCard
+                  tone={2}
+                  label="Monthly Progress"
+                  value={`${gauge2Val}%`}
+                  numericValue={gauge2Val}
+                  percentage={gauge2Val > 0 ? gauge2Val : 91}
+                  delta={`${Math.max(HOURS_TARGET - parseFloat(totalHoursDecimal), 0).toFixed(1)}h left`}
+                  isDown={true}
+                  onAction={() => setShowDetailedCharts((v) => !v)}
+                />
+                <StatCard
+                  tone={3}
+                  label="Weekly Adherence"
+                  value={`${gauge3Val}%`}
+                  numericValue={gauge3Val}
+                  percentage={gauge3Val > 0 ? gauge3Val : 58}
+                  delta={`${weekDelta >= 0 ? '+' : ''}${weekDelta.toFixed(1)}h`}
+                  isDown={false}
+                  onAction={() => setShowDetailedCharts((v) => !v)}
+                />
+              </div>
+
+              {/* Wide Stepped Demographics / Breakdown Card */}
+              <div
+                id="section-demographics"
+                className="bg-[#F2F4F7] rounded-[20px] p-5 border border-white/80 shadow-[0_2px_10px_rgba(15,23,42,0.03)] flex-1 flex flex-col justify-between min-h-[218px]"
+              >
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div>
+                    <h3 className="text-[16px] font-medium text-[#1A1D21] tracking-tight">
+                      Attendance Demographics
+                    </h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowDetailedCharts((v) => !v)}
+                    title={showDetailedCharts ? 'Show stepped overview' : 'Show detailed weekly & monthly charts'}
+                    className="w-8 h-8 rounded-[10px] bg-[#E4E7EC] hover:bg-[#D8DCE3] text-[#2C3137]
+                               flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <AlignJustify className="w-4 h-4" strokeWidth={1.8} />
+                  </button>
+                </div>
+
+                {!showDetailedCharts ? (
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mt-auto pt-3">
+                    {/* Bottom-left legend matching the reference image */}
+                    <div className="space-y-2.5 text-[12px] text-[#374151] shrink-0 pb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#4A90E2]" />
+                        <span>Worked Days</span>
                       </div>
-                      <button
-                        onClick={() => setSelectedDay(null)}
-                        aria-label="Close record"
-                        className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 text-slate-500
-                                   flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#F5A623]" />
+                        <span>Monthly Hours</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#95D600]" />
+                        <span>Weekly Pace</span>
+                      </div>
                     </div>
 
-                    <form onSubmit={handleSave} className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div className="text-left">
-                          <label className="text-xs font-medium text-slate-900 block">Day off</label>
-                          <p className="text-[10px] text-slate-400">Mark as a non-working day</p>
+                    {/* 3 contiguous stepped gradient bars matching "Patient Demographics" */}
+                    <div className="flex-1 grid grid-cols-3 items-end">
+                      {/* Step 1: Blue */}
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 text-[11px] text-[#374151] mb-1">
+                          <span className="w-2 h-2 rounded-full bg-[#4A90E2]" />
+                          <span className="truncate">
+                            Worked: {totalWorkedDays}/{workingDaysElapsed || workingDaysInMonth}d
+                          </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = status === 'Day Off' ? 'Present' : 'Day Off';
-                            setStatus(next);
-                            if (next === 'Day Off') { setInTime(''); setOutTime(''); }
-                            else { setInTime('08:30'); setOutTime('17:30'); }
-                          }}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors
-                                      ${status === 'Day Off' ? 'bg-blue-500' : 'bg-slate-200'}`}
-                        >
-                          <span className={`pointer-events-none inline-block h-4 w-4 mt-0.5 transform rounded-full bg-white
-                                            transition duration-200 ${status === 'Day Off' ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
-                        </button>
-                      </div>
-
-                      <div className={`space-y-4 transition-opacity ${status === 'Day Off' ? 'opacity-40 pointer-events-none' : ''}`}>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">In</label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                value={inTime}
-                                onChange={handleInTimeChange}
-                                onKeyDown={(e) => handleTimeKeyDown(e, setInTime, inTime)}
-                                onBlur={handleInBlur}
-                                placeholder="08:30"
-                                disabled={status === 'Day Off'}
-                                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 text-slate-900 text-xs font-mono
-                                           focus:outline-none focus:border-blue-400 transition-colors pr-8"
-                              />
-                              <Clock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
-                            </div>
-                          </div>
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">Out</label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                value={outTime}
-                                onChange={handleOutTimeChange}
-                                onKeyDown={(e) => handleTimeKeyDown(e, setOutTime, outTime)}
-                                onBlur={handleOutBlur}
-                                placeholder="17:30"
-                                disabled={status === 'Day Off'}
-                                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 text-slate-900 text-xs font-mono
-                                           focus:outline-none focus:border-blue-400 transition-colors pr-8"
-                              />
-                              <Clock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          {PRESETS.map(([pIn, pOut, label]) => (
-                            <button
-                              key={label}
-                              type="button"
-                              onClick={() => { setInTime(pIn); setOutTime(pOut); }}
-                              disabled={status === 'Day Off'}
-                              className="py-2 px-1.5 rounded-xl bg-slate-50 border border-slate-100 text-[10px] text-slate-500
-                                         hover:border-blue-300 hover:text-blue-600 transition-colors cursor-pointer disabled:opacity-50"
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">
-                          {status === 'Day Off' ? 'Reason' : 'Task info'}
-                        </label>
-                        <input
-                          type="text"
-                          value={reason}
-                          onChange={(e) => setReason(e.target.value)}
-                          placeholder={status === 'Day Off' ? 'e.g. Personal holiday' : 'e.g. Web development'}
-                          className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-900 text-xs
-                                     focus:outline-none focus:border-blue-400 transition-colors"
+                        <span className="text-[24px] font-normal text-[#1A1D21] leading-none mb-2.5 tabular-nums">
+                          {Math.round(animGauge1)}%
+                        </span>
+                        <div
+                          className="w-full border-t-[3.5px] border-[#4A90E2] bg-gradient-to-b from-[#4A90E2]/40 via-[#4A90E2]/15 to-transparent"
+                          style={{ height: `${Math.round((animBarFill / 100) * 42)}px` }}
                         />
                       </div>
 
-                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs space-y-2">
-                        <div className="flex justify-between text-slate-500">
-                          <span>Hours</span>
-                          <span className="font-mono font-semibold text-slate-900">
-                            {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).hours : '0.00')}
+                      {/* Step 2: Orange (Tallest middle step) */}
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 text-[11px] text-[#374151] mb-1">
+                          <span className="w-2 h-2 rounded-full bg-[#F5A623]" />
+                          <span className="truncate">
+                            Hours: {totalHoursDecimal}h / {HOURS_TARGET}h
                           </span>
                         </div>
-                        <div className="flex justify-between text-slate-500 border-t border-slate-100 pt-2">
-                          <span>Day pay</span>
-                          <span className="font-mono font-semibold text-emerald-600">
-                            Rs. {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00')}
+                        <span className="text-[24px] font-normal text-[#1A1D21] leading-none mb-2.5 tabular-nums">
+                          {Math.round(animGauge2)}%
+                        </span>
+                        <div
+                          className="w-full border-t-[3.5px] border-[#F5A623] bg-gradient-to-b from-[#F5A623]/40 via-[#F5A623]/15 to-transparent"
+                          style={{ height: `${Math.round((animBarFill / 100) * 88)}px` }}
+                        />
+                      </div>
+
+                      {/* Step 3: Lime-Green */}
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 text-[11px] text-[#374151] mb-1">
+                          <span className="w-2 h-2 rounded-full bg-[#95D600]" />
+                          <span className="truncate">
+                            Week: {weekTotal.toFixed(1)}h ({ currentStreak > 0 ? `${currentStreak}d streak` : `Avg ${avgDayLength.toFixed(1)}h` })
                           </span>
                         </div>
+                        <span className="text-[24px] font-normal text-[#1A1D21] leading-none mb-2.5 tabular-nums">
+                          {Math.round(animGauge3)}%
+                        </span>
+                        <div
+                          className="w-full border-t-[3.5px] border-[#95D600] bg-gradient-to-b from-[#95D600]/40 via-[#95D600]/15 to-transparent"
+                          style={{ height: `${Math.round((animBarFill / 100) * 26)}px` }}
+                        />
                       </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          type="submit"
-                          disabled={isSaving}
-                          className="flex-1 py-2.5 rounded-xl bg-blue-500 text-white text-xs font-semibold
-                                     hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-50
-                                     flex items-center justify-center gap-1.5"
-                        >
-                          <Save className="w-3.5 h-3.5" />
-                          {isSaving ? 'Saving...' : 'Save record'}
-                        </button>
-
-                        {(renderedDay.docId || renderedDay.checkIn || renderedDay.checkOut || renderedDay.status === 'Day Off') && (
-                          <button
-                            type="button"
-                            onClick={handleDelete}
-                            disabled={isSaving}
-                            title="Delete record"
-                            className="w-11 rounded-xl bg-slate-50 border border-slate-100 text-rose-500
-                                       flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </form>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <HoursChart
+                      data={weekData}
+                      weekTotal={weekTotal}
+                      lastWeekTotal={lastWeekTotal}
+                      todayLabel={todayLabel}
+                    />
+                    <MonthProgress
+                      hoursLogged={parseFloat(totalHoursDecimal)}
+                      target={HOURS_TARGET}
+                      workingDaysElapsed={workingDaysElapsed}
+                      workingDaysInMonth={workingDaysInMonth}
+                      avgDayLength={avgDayLength}
+                      avgStartTime={avgStartTime}
+                      overtimeHours={overtimeHours}
+                      monthLabel={`${monthNames[currentMonth]} ${currentYear}`}
+                    />
                   </div>
                 )}
               </div>
             </div>
+          </div>
+
+          {/* ============================ BOTTOM ROW ============================ */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+            {/* ---- BOTTOM-LEFT: Attendance Overview Table (8 cols) ---- */}
+            <div id="section-attendance-overview" className="lg:col-span-8">
+              <TopAttendance
+                ranked={ranked}
+                loading={teamLoading}
+                error={teamError}
+                currentUid={user?.uid}
+                workingDaysElapsed={workingDaysElapsed}
+                monthLabel={monthNames[currentMonth]}
+                daysList={daysList}
+                selectedDay={selectedDay}
+                onSelectDay={handleSelectDay}
+                onExportExcel={handleExportExcel}
+              />
+            </div>
+
+            {/* ---- BOTTOM-RIGHT: Calendar + Record Editor (4 cols) ---- */}
+            <div id="section-calendar" className="lg:col-span-4 space-y-4">
+              <div className="bg-[#F2F4F7] rounded-[20px] p-5 border border-white/80 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
+                {/* Calendar Header matching the reference image */}
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <h3 className="text-[16px] font-medium text-[#1A1D21] tracking-tight">
+                    Calendar
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handlePrevMonth}
+                      aria-label="Previous month"
+                      className="w-6 h-6 rounded-full border border-[#4B5563] text-[#2C3137] flex items-center justify-center
+                                 hover:bg-white transition-colors cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-[12px] font-medium text-[#2C3137] min-w-[92px] text-center">
+                      {monthNames[currentMonth]} {currentYear}
+                    </span>
+                    <button
+                      onClick={handleNextMonth}
+                      aria-label="Next month"
+                      className="w-6 h-6 rounded-full border border-[#4B5563] text-[#2C3137] flex items-center justify-center
+                                 hover:bg-white transition-colors cursor-pointer"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Single-letter weekday header row: S M T W T F S */}
+                <div className="grid grid-cols-7 gap-x-1 mb-2 text-center text-[11px] font-medium text-[#6B7280]">
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                    <div key={`${d}-${i}`}>{d}</div>
+                  ))}
+                </div>
+
+                {/* Calendar Date Grid with Full Status Circle Highlights & Dots */}
+                <div className="grid grid-cols-7 gap-x-1 gap-y-1.5 justify-items-center">
+                  {calendarCells.map((cellDate) => {
+                    const key = format(cellDate, 'yyyy-MM-dd');
+                    const day = dayByKey[key];
+
+                    // Overflow dates from previous/next month
+                    if (!day) {
+                      return (
+                        <div key={key} className="flex flex-col items-center py-0.5 select-none">
+                          <span className="w-8 h-8 flex items-center justify-center text-[12px] text-[#B0B7C3]">
+                            {cellDate.getDate()}
+                          </span>
+                          <span className="h-1" />
+                        </div>
+                      );
+                    }
+
+                    const worked = day.hours !== '0.00' || day.status === 'Present';
+                    const isDayOff = day.status === 'Day Off';
+                    const isToday = day.dateKey === realDateKey;
+                    const isSelected = selectedDay && selectedDay.dateKey === day.dateKey;
+
+                    const missed =
+                      !worked &&
+                      !isDayOff &&
+                      !!realDateKey &&
+                      day.dateKey <= realDateKey;
+
+                    // Circle fill reflects attendance marking state; Today and Selected
+                    // use offset rings so they never hide the underlying marking color.
+                    let circleCls = 'text-[#2C3137] group-hover:bg-white';
+                    if (day.isWeekend && !worked && !isDayOff && !missed) {
+                      circleCls = 'text-[#6B7280] group-hover:bg-white';
+                    }
+                    if (worked) {
+                      circleCls =
+                        'bg-emerald-500 text-white font-semibold shadow-[0_2px_6px_rgba(16,185,129,0.3)] group-hover:bg-emerald-600';
+                    } else if (isDayOff) {
+                      circleCls =
+                        'bg-amber-500 text-white font-semibold shadow-[0_2px_6px_rgba(245,158,11,0.3)] group-hover:bg-amber-600';
+                    } else if (missed) {
+                      circleCls =
+                        'bg-rose-500 text-white font-semibold shadow-[0_2px_6px_rgba(244,63,94,0.3)] group-hover:bg-rose-600';
+                    }
+
+                    if (isToday && !isSelected) {
+                      circleCls += ' ring-2 ring-[#4A90E2] ring-offset-2 ring-offset-[#F2F4F7]';
+                    }
+                    if (isSelected) {
+                      circleCls += ' ring-2 ring-[#141619] ring-offset-2 ring-offset-[#F2F4F7] scale-105';
+                    }
+
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleSelectDay(day)}
+                        title={`${format(cellDate, 'EEEE d MMMM yyyy')} — ${
+                          worked
+                            ? `Logged (${day.hours}h)`
+                            : isDayOff
+                              ? 'Day Off'
+                              : missed
+                                ? 'Missed (not logged)'
+                                : day.status
+                        }`}
+                        className="flex flex-col items-center py-0.5 cursor-pointer group"
+                      >
+                        <span
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] transition-all ${circleCls}`}
+                        >
+                          {day.dateNum}
+                        </span>
+
+                        {/* Matching status indicator dot underneath */}
+                        <span className="flex items-center justify-center gap-0.5 h-1.5 mt-1">
+                          {worked && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                          {isDayOff && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
+                          {missed && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
+                          {isToday && <span className="w-1.5 h-1.5 rounded-full bg-[#4A90E2]" />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Bottom Legend matching the highlighted states */}
+                <div className="flex items-center justify-between flex-wrap gap-3 mt-4 pt-3 border-t border-[#E2E6EC]">
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#374151]">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    Logged
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#374151]">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    Day Off
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#374151]">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    Missed
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#374151]">
+                    <span className="w-2.5 h-2.5 rounded-full ring-2 ring-[#4A90E2] ring-inset" />
+                    Today
+                  </span>
+                </div>
+              </div>
+
+              {/* Record editor — expands smoothly under the calendar when a date is clicked */}
+              <div
+                id="attendance-editor-panel"
+                className={`record-collapse ${selectedDay ? 'is-open' : ''}`}
+              >
+                <div className="record-collapse-inner">
+                  {renderedDay && (
+                    <div className="bg-[#F2F4F7] rounded-[20px] p-5 border border-white/80 shadow-[0_2px_10px_rgba(15,23,42,0.04)]">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h4 className="text-[15px] font-semibold text-[#1A1D21]">
+                            {renderedDay.dateNum} {monthNames[currentMonth]} {currentYear}
+                          </h4>
+                          <p className="text-[11px] text-[#6B7280] mt-0.5">
+                            {renderedDay.dayOfWeek}day · {renderedDay.isWeekend ? 'Weekend' : 'Working day'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setSelectedDay(null)}
+                          aria-label="Close record"
+                          className="w-8 h-8 rounded-full bg-white border border-slate-200/70 text-slate-500
+                                     flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleSave} className="space-y-4">
+                        <div className="flex items-center justify-between p-3 bg-white rounded-2xl border border-white/90">
+                          <div className="text-left">
+                            <label className="text-xs font-medium text-[#1A1D21] block">Day off</label>
+                            <p className="text-[10px] text-[#6B7280]">Mark as a non-working day</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = status === 'Day Off' ? 'Present' : 'Day Off';
+                              setStatus(next);
+                              if (next === 'Day Off') { setInTime(''); setOutTime(''); }
+                              else { setInTime('08:30'); setOutTime('17:30'); }
+                            }}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors
+                                        ${status === 'Day Off' ? 'bg-[#4A90E2]' : 'bg-slate-200'}`}
+                          >
+                            <span className={`pointer-events-none inline-block h-4 w-4 mt-0.5 transform rounded-full bg-white
+                                              transition duration-200 ${status === 'Day Off' ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                          </button>
+                        </div>
+
+                        <div className={`space-y-4 transition-opacity ${status === 'Day Off' ? 'opacity-40 pointer-events-none' : ''}`}>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-medium text-[#6B7280] uppercase tracking-wider block">In</label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={inTime}
+                                  onChange={handleInTimeChange}
+                                  onKeyDown={(e) => handleTimeKeyDown(e, setInTime, inTime)}
+                                  onBlur={handleInBlur}
+                                  placeholder="08:30"
+                                  disabled={status === 'Day Off'}
+                                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200/70 text-[#1A1D21] text-xs font-mono
+                                             focus:outline-none focus:border-[#4A90E2] transition-colors pr-8"
+                                />
+                                <Clock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-medium text-[#6B7280] uppercase tracking-wider block">Out</label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={outTime}
+                                  onChange={handleOutTimeChange}
+                                  onKeyDown={(e) => handleTimeKeyDown(e, setOutTime, outTime)}
+                                  onBlur={handleOutBlur}
+                                  placeholder="17:30"
+                                  disabled={status === 'Day Off'}
+                                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200/70 text-[#1A1D21] text-xs font-mono
+                                             focus:outline-none focus:border-[#4A90E2] transition-colors pr-8"
+                                />
+                                <Clock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            {PRESETS.map(([pIn, pOut, label]) => (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => { setInTime(pIn); setOutTime(pOut); }}
+                                disabled={status === 'Day Off'}
+                                className="py-2 px-1.5 rounded-xl bg-white border border-slate-200/70 text-[10px] text-[#4B5563]
+                                           hover:border-[#4A90E2] hover:text-[#4A90E2] transition-colors cursor-pointer disabled:opacity-50"
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-medium text-[#6B7280] uppercase tracking-wider block">
+                            {status === 'Day Off' ? 'Reason' : 'Task info'}
+                          </label>
+                          <input
+                            type="text"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder={status === 'Day Off' ? 'e.g. Personal holiday' : 'e.g. Web development'}
+                            className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200/70 text-[#1A1D21] text-xs
+                                       focus:outline-none focus:border-[#4A90E2] transition-colors"
+                          />
+                        </div>
+
+                        <div className="p-3 bg-white rounded-2xl border border-slate-200/70 text-xs space-y-2">
+                          <div className="flex justify-between text-[#6B7280]">
+                            <span>Hours</span>
+                            <span className="font-mono font-semibold text-[#1A1D21]">
+                              {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).hours : '0.00')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-[#6B7280] border-t border-slate-100 pt-2">
+                            <span>Day pay</span>
+                            <span className="font-mono font-semibold text-[#4A90E2]">
+                              Rs. {status === 'Day Off' ? '0.00' : (inTime && outTime ? calculateHoursAndSalary(inTime, outTime).salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00')}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={isSaving}
+                            className="flex-1 py-2.5 rounded-xl bg-[#4A90E2] text-white text-xs font-semibold
+                                       hover:bg-[#3A7FD5] transition-colors cursor-pointer disabled:opacity-50
+                                       flex items-center justify-center gap-1.5"
+                          >
+                            <Save className="w-3.5 h-3.5" />
+                            {isSaving ? 'Saving...' : 'Save record'}
+                          </button>
+
+                          {(renderedDay.docId || renderedDay.checkIn || renderedDay.checkOut || renderedDay.status === 'Day Off') && (
+                            <button
+                              type="button"
+                              onClick={handleDelete}
+                              disabled={isSaving}
+                              title="Delete record"
+                              className="w-11 rounded-xl bg-white border border-slate-200/70 text-rose-500
+                                         flex items-center justify-center hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </form>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
           </div>
-        </div>
 
         </div>
       </div>

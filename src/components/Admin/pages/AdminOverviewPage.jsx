@@ -10,6 +10,7 @@ import StaffTable from '../StaffTable';
 import CalendarWidget from '../CalendarWidget';
 
 const HOURS_TARGET = 160; // matches the staff dashboard's monthly target
+const EMPTY_STAFF = [];
 
 const AdminOverviewPage = () => {
   const { user } = useAuth();
@@ -39,39 +40,63 @@ const AdminOverviewPage = () => {
   const exportPct = staffCount > 0 ? Math.round((exportedCount / staffCount) * 100) : 0;
 
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <TeamOverviewCard
-          totals={totals}
-          online={online}
-          adminEmail={user?.email}
-          loading={loading}
-        />
+    <div className="space-y-4">
+      {/* Top 12-col Grid: Left 4 cols = Hero TeamOverviewCard, Right 8 cols = 3 Arc Gauges + Demographics */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <div className="lg:col-span-4">
+          <TeamOverviewCard
+            totals={totals}
+            online={online}
+            adminEmail={user?.email}
+            loading={loading}
+            shiftMonth={shiftMonth}
+          />
+        </div>
 
-        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <GaugeCard label="Attendance rate" value={loading ? 0 : attendancePct} tone="blue" />
-          <GaugeCard label="Hours progress" value={loading ? 0 : hoursPct} tone="orange" />
-          <GaugeCard label="Export completion" value={loading ? 0 : exportPct} tone="green" />
+        <div className="lg:col-span-8 flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <GaugeCard
+              label="Attendance Stability"
+              value={loading ? 0 : attendancePct}
+              tone="blue"
+              delta={`${totals?.daysPresent ?? 0}d`}
+            />
+            <GaugeCard
+              label="Hours Progress"
+              value={loading ? 0 : hoursPct}
+              tone="orange"
+              delta={`${(totals?.totalHours ?? 0).toFixed(0)}h`}
+            />
+            <GaugeCard
+              label="Export Adherence"
+              value={loading ? 0 : exportPct}
+              tone="green"
+              delta={`${exportedCount}/${staffCount}`}
+            />
+          </div>
 
-          <div className="sm:col-span-3">
-            <AttendanceBreakdownCard staff={loading ? [] : staff} monthDate={monthDate} />
+          <div className="flex-1">
+            <AttendanceBreakdownCard staff={loading ? EMPTY_STAFF : staff} monthDate={monthDate} />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-        <div className="lg:col-span-2">
+      {/* Bottom 12-col Grid: Left 8 cols = Staff Overview Table, Right 4 cols = Highlighted Calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <div className="lg:col-span-8">
           {loading ? (
-            <div className="bg-white rounded-[22px] p-10 flex flex-col items-center justify-center gap-3 text-slate-400 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
-              <div className="w-9 h-9 rounded-full border-4 border-blue-100 border-t-blue-400 animate-spin" />
-              <p className="text-xs font-medium">Loading staff attendance…</p>
+            <div className="bg-[#F2F4F7] rounded-[20px] p-10 border border-white/80 flex flex-col items-center justify-center gap-3 text-slate-400 shadow-[0_2px_10px_rgba(15,23,42,0.03)] h-full min-h-[300px]">
+              <div className="w-9 h-9 rounded-full border-4 border-blue-100 border-t-[#4A90E2] animate-spin" />
+              <p className="text-xs font-medium text-slate-500">Loading staff attendance…</p>
             </div>
           ) : (
             <StaffTable staff={staff} totals={totals} monthDate={monthDate} monthKey={monthKey} />
           )}
         </div>
 
-        <CalendarWidget monthDate={monthDate} shiftMonth={shiftMonth} staff={loading ? [] : staff} />
+        <div className="lg:col-span-4">
+          <CalendarWidget monthDate={monthDate} shiftMonth={shiftMonth} staff={loading ? EMPTY_STAFF : staff} />
+        </div>
       </div>
     </div>
   );

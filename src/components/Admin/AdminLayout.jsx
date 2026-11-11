@@ -3,10 +3,16 @@ import { NavLink, Outlet, useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAdminData } from '../../hooks/useAdminData';
 import { useTeam } from '../../hooks/useTeam';
-import { Avatar } from '../Layout/Avatar';
 import logo2 from '../../assets/images/logo2.png';
 import {
-  Home, Users, FolderOpen, Share2, Settings, HelpCircle, LogOut, RefreshCw,
+  Home,
+  LayoutGrid,
+  ClipboardList,
+  Users,
+  FolderOpen,
+  Headphones,
+  LogOut,
+  RefreshCw,
 } from 'lucide-react';
 
 const PILL_TABS = [
@@ -18,20 +24,19 @@ const PILL_TABS = [
 ];
 
 const RAIL_ICONS = [
-  { icon: Home, to: '/admin', end: true, label: 'Dashboard' },
-  { icon: Users, to: '/team', label: 'Team' },
-  { icon: Share2, to: '/admin/presence', label: 'Presence' },
+  { icon: LayoutGrid, to: '/admin', end: true, label: 'Dashboard' },
+  { icon: ClipboardList, to: '/admin/attendance', label: 'Attendance Log' },
+  { icon: Home, to: '/admin/payroll', label: 'Payroll Analytics' },
+  { icon: Users, to: '/admin/presence', label: 'Presence' },
   { icon: FolderOpen, to: '/admin/reports', label: 'Reports' },
 ];
 
 /**
- * Shell shared by every /admin/* page: icon rail, pill nav, and the
- * month-scoped data every page needs. Child routes read it via
- * useAdminShell() below instead of each re-fetching - there is exactly one
- * useAdminData() call for the whole admin section.
+ * Shell shared by every /admin/* page: floating rounded-square icon rail,
+ * centered top tab bar, and month-scoped data matching the reference UI.
  */
 const AdminLayout = () => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const today = new Date();
   const [monthDate, setMonthDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [exportError, setExportError] = useState('');
@@ -49,97 +54,114 @@ const AdminLayout = () => {
     exportError, setExportError,
   };
 
+  const tileBase =
+    'w-11 h-11 rounded-[14px] flex items-center justify-center transition-all duration-200 cursor-pointer';
+  const tileInactive =
+    'bg-[#F2F4F7] text-[#2C3137] border border-white/80 shadow-[0_2px_6px_rgba(15,23,42,0.03)] hover:bg-white';
+  const tileActive =
+    'bg-[#141619] text-white shadow-[0_4px_12px_rgba(20,22,25,0.22)]';
+
   return (
-    <div className="h-full w-full flex overflow-hidden bg-slate-100 text-slate-900">
-      {/* Icon rail */}
-      <aside className="hidden md:flex w-[72px] shrink-0 flex-col items-center justify-between py-5 bg-white border-r border-slate-100">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center overflow-hidden mb-2 p-1.5">
-            <img src={logo2} alt="APIIT" className="w-full h-full object-contain" />
+    <div className="h-full w-full flex overflow-hidden bg-[#E2E5EC] text-[#1A1D21]">
+      {/* Floating Icon Rail matching the reference UI */}
+      <aside className="hidden md:flex w-[72px] shrink-0 flex-col items-center justify-between pb-5 pt-3.5 pl-2 select-none">
+        <div className="flex flex-col items-center">
+          <div className="h-[52px] flex items-center justify-center mb-3">
+            <img src={logo2} alt="APIIT" className="w-9 h-9 object-contain" />
           </div>
-          {RAIL_ICONS.map(({ icon: Icon, to, end, label }) => (
+
+          <div className="flex flex-col items-center gap-2.5">
+            {RAIL_ICONS.map(({ icon: Icon, to, end, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                title={label}
+                className={({ isActive }) => `${tileBase} ${isActive ? tileActive : tileInactive}`}
+              >
+                <Icon className="w-[18px] h-[18px]" strokeWidth={1.9} />
+              </NavLink>
+            ))}
+
             <NavLink
-              key={to}
-              to={to}
-              end={end}
-              title={label}
-              className={({ isActive }) =>
-                `w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${
-                  isActive ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-                }`
-              }
+              to="/team"
+              title="Team Workspace"
+              className={({ isActive }) => `${tileBase} ${isActive ? tileActive : tileInactive}`}
             >
-              <Icon className="w-4.5 h-4.5" />
+              <Users className="w-[18px] h-[18px]" strokeWidth={1.9} />
             </NavLink>
-          ))}
+          </div>
         </div>
 
-        <div className="flex flex-col items-center gap-3">
-          <button title="Help" className="w-10 h-10 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer">
-            <HelpCircle className="w-4.5 h-4.5" />
-          </button>
-          <button title="Settings" className="w-10 h-10 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer">
-            <Settings className="w-4.5 h-4.5" />
+        <div className="flex flex-col items-center gap-2.5">
+          <button
+            type="button"
+            onClick={reload}
+            title="Refresh data"
+            className={`${tileBase} ${tileInactive}`}
+          >
+            <Headphones className="w-[18px] h-[18px]" strokeWidth={1.9} />
           </button>
           <button
+            type="button"
             title="Sign out"
             onClick={logout}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors cursor-pointer"
+            className={`${tileBase} ${tileInactive} hover:text-rose-600 hover:border-rose-100`}
           >
-            <LogOut className="w-4.5 h-4.5" />
+            <LogOut className="w-[18px] h-[18px]" strokeWidth={1.9} />
           </button>
-          <div className="pt-2 mt-1 border-t border-slate-100" title={user?.name || 'Admin'}>
-            <Avatar user={user} size={36} />
-          </div>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="shrink-0 h-[76px] px-6 flex items-center gap-4">
-          <div className="flex-1 flex justify-center">
-            <nav className="flex items-center gap-1 bg-white rounded-full p-1.5 shadow-[0_2px_12px_rgba(15,23,42,0.06)]">
-              {PILL_TABS.map(tab => (
-                <NavLink
-                  key={tab.to}
-                  to={tab.to}
-                  end={tab.end}
-                  className={({ isActive }) =>
-                    `px-4 py-2 rounded-full text-[13px] font-medium transition-colors whitespace-nowrap ${
-                      isActive ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-slate-800'
-                    }`
-                  }
-                >
-                  {tab.label}
-                </NavLink>
-              ))}
-            </nav>
+        {/* Top bar matching the reference UI */}
+        <header className="shrink-0 px-4 sm:px-6 pt-3.5 pb-3 flex items-center justify-between gap-4">
+          <div className="hidden lg:flex items-center gap-2 min-w-[120px]">
+            <span className="text-[11px] font-medium text-[#6B7280]">Admin Portal</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar mx-auto">
+            {PILL_TABS.map(tab => (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                end={tab.end}
+                className={({ isActive }) =>
+                  `px-4 sm:px-5 py-2.5 rounded-[12px] text-[12.5px] font-medium transition-all whitespace-nowrap ${
+                    isActive
+                      ? 'bg-[#4A90E2] text-white shadow-[0_4px_12px_rgba(74,144,226,0.28)]'
+                      : 'bg-[#F2F4F7] text-[#4B5563] border border-white/80 hover:bg-white'
+                  }`
+                }
+              >
+                {tab.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-2.5 shrink-0 min-w-[100px] justify-end">
             <button
               onClick={reload}
               title="Refresh"
-              className="w-10 h-10 rounded-full bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)] flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              className="relative w-10 h-10 rounded-[12px] bg-[#F2F4F7] border border-white/80 hover:bg-white flex items-center justify-center text-[#1A1D21] transition-colors cursor-pointer"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4" strokeWidth={1.9} />
             </button>
-            <Avatar user={user} size={40} />
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-5">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-4">
           {exportError && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-white border border-rose-100 text-rose-600 text-xs shadow-sm">
+            <div className="flex items-center gap-2 p-3 rounded-[16px] bg-[#F2F4F7] border border-rose-200 text-rose-600 text-xs">
               {exportError}
             </div>
           )}
 
           {error ? (
-            <div className="flex items-start gap-3 p-4 rounded-2xl bg-white border border-rose-100 shadow-sm">
+            <div className="flex items-start gap-3 p-4 rounded-[20px] bg-[#F2F4F7] border border-rose-200">
               <div>
                 <h4 className="text-sm font-semibold text-rose-600">Could not load admin data</h4>
-                <p className="text-xs text-slate-500 mt-0.5">{error.message}</p>
+                <p className="text-xs text-[#6B7280] mt-0.5">{error.message}</p>
               </div>
             </div>
           ) : (

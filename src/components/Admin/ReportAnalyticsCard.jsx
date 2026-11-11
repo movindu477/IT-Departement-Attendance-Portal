@@ -1,8 +1,23 @@
 import React, { useMemo, useState } from 'react';
 import { Flame } from 'lucide-react';
 import { MON_FIRST_LABELS, weekdayLabelOf, weekBlockIndexOf } from '../../utils/calendarUtils';
+import { useSmoothNumber } from '../../hooks/useSmoothNumber';
 
 const MODES = ['Daily', 'Weekly', 'Monthly'];
+
+function AnimatedBar({ pct, isPeak }) {
+  const smoothPct = useSmoothNumber(pct, 2200);
+  return (
+    <div
+      className={`w-full rounded-t-lg transition-colors duration-300 ${
+        isPeak
+          ? 'bg-gradient-to-b from-[#4A90E2] to-[#4A90E2]/75 shadow-[0_4px_12px_rgba(74,144,226,0.25)]'
+          : 'bg-[#E5E8EF] hover:bg-[#D5D9E3]'
+      }`}
+      style={{ height: `${Math.max(smoothPct, 3)}%` }}
+    />
+  );
+}
 
 /**
  * "Daily" = team hours by weekday (matches the Mon..Sun axis of the reference
@@ -49,17 +64,19 @@ const ReportAnalyticsCard = ({ staff, monthDate }) => {
   const peakIdx = bars.reduce((best, b, i) => (b.value > bars[best]?.value ? i : best), 0);
 
   return (
-    <div className="bg-white rounded-[22px] p-5 shadow-[0_2px_12px_rgba(15,23,42,0.05)] h-full flex flex-col">
+    <div className="bg-[#F2F4F7] rounded-[20px] p-5 border border-white/80 shadow-[0_2px_10px_rgba(15,23,42,0.03)] h-full flex flex-col">
       <div className="flex items-center justify-between gap-3 mb-6">
-        <h3 className="text-[15px] font-semibold text-slate-900">Report Analytics</h3>
-        <div className="flex items-center gap-0.5 bg-slate-100 rounded-full p-1">
+        <h3 className="text-[15px] font-semibold text-slate-900 tracking-tight">Report Analytics</h3>
+        <div className="flex items-center gap-1 bg-[#E5E8EF] rounded-[11px] p-1">
           {MODES.map(m => (
             <button
               key={m}
               type="button"
               onClick={() => setMode(m)}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors cursor-pointer ${
-                mode === m ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-slate-800'
+              className={`px-3 py-1 rounded-[8px] text-[11px] font-medium transition-colors cursor-pointer ${
+                mode === m
+                  ? 'bg-[#4A90E2] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               {m}
@@ -68,8 +85,8 @@ const ReportAnalyticsCard = ({ staff, monthDate }) => {
         </div>
       </div>
 
-      <div className="flex-1 flex items-stretch gap-3 min-h-[180px]">
-        <div className="flex flex-col justify-between text-[10px] text-slate-300 pb-6 pt-8 text-right w-8 shrink-0">
+      <div className="flex-1 flex items-stretch gap-3 min-h-[190px]">
+        <div className="flex flex-col justify-between text-[10px] font-medium text-slate-400 pb-6 pt-8 text-right w-8 shrink-0">
           <span>{axisMax}h</span>
           <span>{Math.round(axisMax * 0.66)}h</span>
           <span>{Math.round(axisMax * 0.33)}h</span>
@@ -78,7 +95,7 @@ const ReportAnalyticsCard = ({ staff, monthDate }) => {
 
         <div className="flex-1 flex items-end justify-between gap-2 sm:gap-3">
           {bars.length === 0 && (
-            <p className="w-full text-center text-xs text-slate-300 pb-8">No hours logged this month.</p>
+            <p className="w-full text-center text-xs text-slate-400 pb-8">No hours logged this month.</p>
           )}
           {bars.map((b, i) => {
             const pct = axisMax > 0 ? (b.value / axisMax) * 100 : 0;
@@ -87,18 +104,15 @@ const ReportAnalyticsCard = ({ staff, monthDate }) => {
             return (
               <div key={b.label} className="relative flex-1 flex flex-col items-center h-full justify-end">
                 {isPeak && (
-                  <div className="mb-1.5 flex items-center gap-1 bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded-lg whitespace-nowrap">
-                    <Flame className="w-3 h-3 text-orange-400" />
-                    {b.value.toFixed(1)} Hours
+                  <div className="mb-1.5 flex items-center gap-1 bg-[#141619] text-white text-[10px] font-medium px-2 py-1 rounded-lg whitespace-nowrap shadow-sm">
+                    <Flame className="w-3 h-3 text-amber-400" />
+                    {b.value.toFixed(1)}h
                   </div>
                 )}
-                <div className="w-full max-w-[26px] flex flex-col justify-end" style={{ height: '132px' }}>
-                  <div
-                    className={`digital-bar w-full rounded-t-lg ${isPeak ? 'bg-blue-400' : 'bg-slate-100'}`}
-                    style={{ height: `${Math.max(pct, 2)}%` }}
-                  />
+                <div className="w-full max-w-[28px] flex flex-col justify-end" style={{ height: '132px' }}>
+                  <AnimatedBar pct={pct} isPeak={isPeak} />
                 </div>
-                <span className="text-[10px] text-slate-400 mt-2 truncate max-w-[48px]">{b.label}</span>
+                <span className="text-[10.5px] font-medium text-slate-500 mt-2 truncate max-w-[48px]">{b.label}</span>
               </div>
             );
           })}
