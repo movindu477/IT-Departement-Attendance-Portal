@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { auth } from '../../firebase';
 import { CheckCircle2, AlertCircle, X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import ThemeToggle from '../Layout/ThemeToggle';
 import logo2 from '../../assets/images/logo2.png';
 import loginBg from '../../assets/images/login.jpg';
 
@@ -45,7 +46,12 @@ const Login = () => {
   };
 
   return (
-    <div className="h-full w-full bg-[#F3F4F6] text-[#111315] overflow-y-auto flex items-center justify-center px-6 py-8 sm:px-12 sm:py-10 select-none">
+    <div className="relative h-full w-full bg-[#F3F4F6] text-[#111315] overflow-y-auto flex items-center justify-center px-6 py-8 sm:px-12 sm:py-10 select-none">
+      {/* Top-right smooth theme toggle */}
+      <div className="fixed top-5 right-6 z-40">
+        <ThemeToggle />
+      </div>
+
       {/* Centered container with generous breathing room around it (not stretched to window edges) */}
       <div
         className={`w-full max-w-[980px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center transition-all duration-700 ${

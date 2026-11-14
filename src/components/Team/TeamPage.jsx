@@ -5,6 +5,7 @@ import { ArrowLeft, Users, Flame, CalendarCheck, AlertCircle } from 'lucide-reac
 import { useTeam } from '../../hooks/useTeam';
 import { useAuth } from '../../context/AuthContext';
 import StaffRail from '../Layout/StaffRail';
+import ThemeToggle from '../Layout/ThemeToggle';
 import AvatarUpload, { resolveUserPortrait } from '../Layout/AvatarUpload';
 
 const MemberCard = ({ member, isSelf }) => {
@@ -133,12 +134,13 @@ const TeamPage = () => {
             </nav>
           )}
 
-          <div className="flex items-center gap-3 text-xs min-w-[120px] justify-end">
+          <div className="flex items-center gap-2.5 text-xs min-w-[120px] justify-end">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[#F2F4F7] border border-white/80 text-[#374151]">
               <span className="w-2 h-2 rounded-full bg-[#84CC16]" />
               {online.length} online
             </span>
-            <AvatarUpload size={40} />
+            <ThemeToggle />
+            {!isAdmin && <AvatarUpload size={40} />}
           </div>
         </header>
 

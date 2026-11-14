@@ -5,11 +5,13 @@ import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import AvatarUpload from '../Layout/AvatarUpload';
 import StaffRail from '../Layout/StaffRail';
+import ThemeToggle from '../Layout/ThemeToggle';
 import StatCard from './StatCard';
 import TopAttendance from './TopAttendance';
 import HoursChart from './HoursChart';
 import MonthProgress from './MonthProgress';
 import { useTeam } from '../../hooks/useTeam';
+import { useTheme } from '../../context/ThemeContext';
 import { useSmoothNumber } from '../../hooks/useSmoothNumber';
 import { computeMonthStats } from '../../utils/computeStats';
 import {
@@ -51,6 +53,7 @@ const PRESETS = [
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { isDark } = useTheme();
 
   // Pay rate now comes from userPrivate/{uid} via AuthContext; the literal is
   // only a fallback for the first render before the profile resolves.
@@ -821,8 +824,9 @@ const Dashboard = () => {
             })}
           </nav>
 
-          {/* Right notification bell + square user avatar */}
+          {/* Right theme toggle + notification bell + square user avatar */}
           <div className="flex items-center gap-2.5 shrink-0 min-w-[100px] justify-end">
+            <ThemeToggle />
             <button
               type="button"
               onClick={handleExportExcel}
@@ -884,8 +888,9 @@ const Dashboard = () => {
               <div
                 className="pointer-events-none absolute -top-6 -left-6 w-[78%] h-[74%]"
                 style={{
-                  background:
-                    'radial-gradient(circle at 30% 32%, rgba(142, 198, 255, 0.85) 0%, rgba(182, 218, 255, 0.45) 44%, rgba(242, 244, 247, 0) 76%)',
+                  background: isDark
+                    ? 'radial-gradient(circle at 30% 32%, rgba(74, 144, 226, 0.28) 0%, rgba(56, 120, 210, 0.11) 46%, rgba(20, 25, 35, 0) 76%)'
+                    : 'radial-gradient(circle at 30% 32%, rgba(142, 198, 255, 0.85) 0%, rgba(182, 218, 255, 0.45) 44%, rgba(242, 244, 247, 0) 76%)',
                 }}
               />
 

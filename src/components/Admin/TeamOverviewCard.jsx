@@ -1,6 +1,7 @@
 import React from 'react';
 import { Phone, MapPin, Mail, Undo2, Redo2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useSmoothNumber } from '../../hooks/useSmoothNumber';
 
 /**
@@ -10,6 +11,7 @@ import { useSmoothNumber } from '../../hooks/useSmoothNumber';
  */
 const TeamOverviewCard = ({ totals, online, adminEmail, loading, onRefresh, shiftMonth }) => {
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const staffCount = totals?.staffCount ?? 0;
   const daysPresent = totals?.daysPresent ?? 0;
   const onlineCount = online?.length ?? 0;
@@ -25,8 +27,9 @@ const TeamOverviewCard = ({ totals, online, adminEmail, loading, onRefresh, shif
       <div
         className="pointer-events-none absolute -top-6 -left-6 w-[78%] h-[74%]"
         style={{
-          background:
-            'radial-gradient(circle at 30% 32%, rgba(142, 198, 255, 0.85) 0%, rgba(182, 218, 255, 0.45) 44%, rgba(242, 244, 247, 0) 76%)',
+          background: isDark
+            ? 'radial-gradient(circle at 30% 32%, rgba(74, 144, 226, 0.28) 0%, rgba(56, 120, 210, 0.11) 46%, rgba(20, 25, 35, 0) 76%)'
+            : 'radial-gradient(circle at 30% 32%, rgba(142, 198, 255, 0.85) 0%, rgba(182, 218, 255, 0.45) 44%, rgba(242, 244, 247, 0) 76%)',
         }}
       />
 

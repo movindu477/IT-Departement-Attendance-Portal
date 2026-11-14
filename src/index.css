@@ -28,36 +28,27 @@
   font-style: normal;
 }
 
-/* ------------------------------------------------------------------
-   Dark clinical-dashboard palette: black canvas, near-black cards,
-   a mint accent for positive state and a blue accent for scheduled /
-   pending state. White ink, grey secondary.
-   ------------------------------------------------------------------ */
 @theme {
   /* Surfaces */
-  --color-canvas: #000000;
-  --color-surface: #121212;
-  --color-raised: #1c1c1c;
-  --color-subtle: #191919;
-  --color-line: #262626;
-  --color-line-strong: #333333;
+  --color-canvas: #E2E5EC;
+  --color-surface: #F2F4F7;
+  --color-raised: #FFFFFF;
+  --color-subtle: #E4E7EC;
+  --color-line: #E2E6EC;
+  --color-line-strong: #CBD2DC;
 
   /* Text */
-  --color-ink: #ffffff;
-  --color-ink-soft: #a3a3a3;
-  --color-muted: #6f6f6f;
+  --color-ink: #1A1D21;
+  --color-ink-soft: #4B5563;
+  --color-muted: #6B7280;
 
-  /* Mint accent - positive, present, paid */
+  /* Accents */
   --color-mint: #a7f3c8;
   --color-mint-deep: #7ee8a5;
   --color-mint-ink: #06301b;
-
-  /* Blue accent - scheduled, pending, in-progress */
   --color-azure: #4a90ff;
   --color-azure-soft: #1e3a6b;
 
-  /* Metric tile fills. Ink is chosen by luminance: the purple is dark
-     enough for white text, the cyan and green are bright and need near-black. */
   --color-tone-1: #a629f0;
   --color-tone-1-ink: #ffffff;
   --color-tone-2: #1ebbe6;
@@ -65,11 +56,8 @@
   --color-tone-3: #1ee661;
   --color-tone-3-ink: #032b13;
 
-  /* Support */
   --color-amber: #fbbf24;
   --color-danger: #f87171;
-
-  /* Status */
   --color-online: #7ee8a5;
   --color-offline: #4a4a4a;
 }
@@ -77,16 +65,204 @@
 :root {
   font-family: 'Poppins', sans-serif;
   font-weight: 300;
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 body {
   font-family: 'Poppins', sans-serif;
   font-weight: 300;
-  background-color: #000000;
-  color: #ffffff;
+  background-color: #E2E5EC;
+  color: #1A1D21;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Prevent double scrollbars at page level */
+  overflow: hidden;
+  transition: background-color 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.25s ease;
+}
+
+html.dark body {
+  background-color: #0B0E14;
+  color: #F3F6FA;
+}
+
+/* Smooth theme transition on cards, rails, headers, buttons, and inputs */
+div, aside, header, nav, section, table, tr, td, th, button, input, span, p, h1, h2, h3, h4 {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 280ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* =========================================================================
+   DARK THEME PALETTE OVERRIDES (html.dark)
+   Maps the light reference palette (#E2E5EC canvas, #F2F4F7 cards, #1A1D21 ink)
+   to a cohesive deep-slate dark dashboard theme (#0B0E14 canvas, #141923 cards).
+   ========================================================================= */
+
+/* 1. Outer Canvases */
+html.dark .bg-\[\#E2E5EC\],
+html.dark .bg-\[\#F3F4F6\] {
+  background-color: #0B0E14 !important;
+}
+
+/* 2. Primary Card Surfaces */
+html.dark .bg-\[\#F2F4F7\] {
+  background-color: #141923 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32) !important;
+}
+
+/* 3. Secondary / Elevated Pill & Input Surfaces */
+html.dark .bg-\[\#E4E7EC\],
+html.dark .bg-\[\#E5E8EF\],
+html.dark .bg-\[\#E2E6EC\] {
+  background-color: #1E2534 !important;
+}
+
+html.dark .hover\:bg-\[\#D8DCE3\]:hover,
+html.dark .hover\:bg-\[\#D5D9E3\]:hover,
+html.dark .hover\:bg-\[\#E4E7EC\]:hover {
+  background-color: #283145 !important;
+}
+
+html.dark .bg-white,
+html.dark .bg-white\/75,
+html.dark .bg-white\/70,
+html.dark .bg-white\/80,
+html.dark .bg-white\/55,
+html.dark .bg-white\/40,
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/80,
+html.dark .bg-slate-100 {
+  background-color: #1B2230 !important;
+}
+
+html.dark .hover\:bg-white:hover,
+html.dark .hover\:bg-white\/80:hover,
+html.dark .hover\:bg-white\/60:hover,
+html.dark .hover\:bg-white\/50:hover,
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-slate-100:hover {
+  background-color: #242D3F !important;
+}
+
+/* 4. Borders, Dividers & Rings */
+html.dark .border-white\/80,
+html.dark .border-white\/90,
+html.dark .border-white,
+html.dark .border-\[\#E2E6EC\],
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-200\/70,
+html.dark .border-slate-200\/80 {
+  border-color: #232B3B !important;
+}
+
+html.dark .divide-\[\#E6E9EF\]\/70 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-200\/60 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-200\/50 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-100\/70 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-50 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #212938 !important;
+}
+
+html.dark .ring-offset-\[\#F2F4F7\] {
+  --tw-ring-offset-color: #141923 !important;
+}
+
+html.dark .ring-\[\#141619\] {
+  --tw-ring-color: #F3F6FA !important;
+}
+
+html.dark .border-\[\#4B5563\],
+html.dark .border-\[\#9CA3AF\],
+html.dark .border-\[\#B0B7C3\] {
+  border-color: #38445B !important;
+}
+
+html.dark .text-emerald-700,
+html.dark .text-emerald-600 {
+  color: #34D399 !important;
+}
+
+html.dark .text-amber-700,
+html.dark .text-\[\#A86A24\],
+html.dark .text-\[\#D97706\] {
+  color: #FBBF24 !important;
+}
+
+html.dark .text-\[\#2A6CB8\],
+html.dark .text-\[\#2563EB\],
+html.dark .text-\[\#3B82F6\] {
+  color: #7BB4F7 !important;
+}
+
+html.dark .bg-emerald-100\/80,
+html.dark .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+}
+
+html.dark .bg-amber-50,
+html.dark .bg-amber-50\/40 {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+/* 5. Typography Hierarchy */
+html.dark .text-\[\#1A1D21\],
+html.dark .text-\[\#111315\],
+html.dark .text-slate-900,
+html.dark .text-slate-800 {
+  color: #F3F6FA !important;
+}
+
+html.dark .text-\[\#2C3137\],
+html.dark .text-\[\#374151\],
+html.dark .text-slate-700,
+html.dark .text-slate-600 {
+  color: #C5CDDC !important;
+}
+
+html.dark .text-\[\#4B5563\],
+html.dark .text-\[\#6B7280\],
+html.dark .text-slate-500,
+html.dark .text-slate-400 {
+  color: #8B95A9 !important;
+}
+
+html.dark .text-\[\#B0B7C3\],
+html.dark .text-slate-300 {
+  color: #495368 !important;
+}
+
+/* 6. Status Pills & Badges in Dark Mode */
+html.dark .bg-\[\#CFE3FF\],
+html.dark .bg-\[\#D6E6F9\],
+html.dark .bg-\[\#DCE8F8\] {
+  background-color: rgba(74, 144, 226, 0.18) !important;
+  color: #7BB4F7 !important;
+}
+
+html.dark .bg-\[\#FDE2B8\],
+html.dark .bg-\[\#FADFC2\] {
+  background-color: rgba(245, 166, 35, 0.18) !important;
+  color: #FBBF24 !important;
+}
+
+/* 7. Active Dark Tiles / Buttons in Dark Mode */
+html.dark aside .bg-\[\#141619\] {
+  background-color: #4A90E2 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(74, 144, 226, 0.38) !important;
+}
+
+html.dark button.bg-\[\#161719\] {
+  background-color: #4A90E2 !important;
+  color: #FFFFFF !important;
+}
+html.dark button.bg-\[\#161719\]:hover {
+  background-color: #3A7FD5 !important;
 }
 
 /* Custom scrollbars inside dashboard lists */
@@ -98,11 +274,17 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #333333;
+  background: #C4CBD6;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #454545;
+  background: #9EA7B6;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #2A3346;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3B4760;
 }
 
 @keyframes fadeInUp {
@@ -120,9 +302,7 @@ body {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Smooth auto-height expand for the calendar record box. Animating
-   grid-template-rows from 0fr to 1fr gives a real height transition without
-   hardcoding a max-height that would clip longer content. */
+/* Smooth auto-height expand for the calendar record box */
 .record-collapse {
   display: grid;
   grid-template-rows: 0fr;
@@ -139,11 +319,10 @@ body {
   min-height: 0;
 }
 
-/* Bars and chart segments ease into place */
 .digital-bar {
   transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
-/* Carousel: a slow, eased slide rather than an instant page swap */
+
 .carousel-track {
   transition: transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
@@ -153,7 +332,6 @@ body {
   transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Card elevation on a black ground: a hairline plus a soft lift */
 .card-soft {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 10px 30px rgba(0, 0, 0, 0.45);
 }

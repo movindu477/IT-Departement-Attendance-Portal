@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { useSmoothNumber } from '../../hooks/useSmoothNumber';
+import { useTheme } from '../../context/ThemeContext';
 
 const TONES = {
   1: { color: '#4A90E2', triangleClass: 'text-[#4A90E2]', isDown: false },
@@ -42,6 +43,7 @@ const StatCard = ({
   onAction,
   actionLabel,
 }) => {
+  const { isDark } = useTheme();
   const t = TONES[tone] ?? TONES[1];
   const targetPct = Math.max(4, Math.min(100, Number(percentage) || 0));
   const animatedPct = useSmoothNumber(targetPct, 2200);
@@ -120,7 +122,7 @@ const StatCard = ({
         <path
           d={trackPath}
           fill="none"
-          stroke="#DCE1E8"
+          stroke={isDark ? '#252E42' : '#DCE1E8'}
           strokeWidth="2.5"
           strokeLinecap="round"
         />

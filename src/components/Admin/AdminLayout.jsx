@@ -3,6 +3,7 @@ import { NavLink, Outlet, useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAdminData } from '../../hooks/useAdminData';
 import { useTeam } from '../../hooks/useTeam';
+import ThemeToggle from '../Layout/ThemeToggle';
 import logo2 from '../../assets/images/logo2.png';
 import {
   Home,
@@ -140,6 +141,7 @@ const AdminLayout = () => {
           </nav>
 
           <div className="flex items-center gap-2.5 shrink-0 min-w-[100px] justify-end">
+            <ThemeToggle />
             <button
               onClick={reload}
               title="Refresh"

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { useSmoothNumber } from '../../hooks/useSmoothNumber';
+import { useTheme } from '../../context/ThemeContext';
 
 const TONES = {
   blue: { color: '#4A90E2', triangleClass: 'text-[#4A90E2]', isDown: false, defaultDelta: '+3.1%' },
@@ -30,6 +31,7 @@ function describeArc(cx, cy, r, startAngle, endAngle) {
  * Adherence") with smooth 2.2s count-up and arc sweep animations.
  */
 const GaugeCard = ({ label, value = 0, delta, tone = 'blue', onAction }) => {
+  const { isDark } = useTheme();
   const t = TONES[tone] || TONES.blue;
   const targetVal = Math.max(0, Math.min(100, Number(value) || 0));
   const animatedVal = useSmoothNumber(targetVal, 2200);
@@ -88,7 +90,7 @@ const GaugeCard = ({ label, value = 0, delta, tone = 'blue', onAction }) => {
         <path
           d={trackPath}
           fill="none"
-          stroke="#DCE1E8"
+          stroke={isDark ? '#252E42' : '#DCE1E8'}
           strokeWidth="2.5"
           strokeLinecap="round"
         />

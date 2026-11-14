@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import PrivateRoute from './components/Auth/PrivateRoute';
 import AdminRoute from './components/Auth/AdminRoute';
 import Login from './components/Auth/Login';
@@ -23,9 +24,9 @@ function LayoutWrapper() {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen bg-canvas flex items-center justify-center text-ink-soft">
+      <div className="h-screen w-screen bg-[#E2E5EC] flex items-center justify-center text-[#4B5563] transition-colors duration-300">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-4 border-brand-soft border-t-brand animate-spin" />
+          <div className="w-12 h-12 rounded-full border-4 border-[#4A90E2]/25 border-t-[#4A90E2] animate-spin" />
           <p className="text-sm font-medium tracking-wide">Securing session...</p>
         </div>
       </div>
@@ -33,7 +34,7 @@ function LayoutWrapper() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col font-['Poppins',sans-serif] bg-canvas text-ink">
+    <div className="h-screen w-screen overflow-hidden flex flex-col font-['Poppins',sans-serif] bg-[#E2E5EC] text-[#1A1D21] transition-colors duration-300">
       <Outlet />
     </div>
   );
@@ -54,33 +55,35 @@ function App() {
   }
 
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route element={<LayoutWrapper />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route element={<LayoutWrapper />}>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-            <Route element={<PrivateRoute />}>
-              <Route path="/" element={<RootRoute />} />
-              <Route path="/team" element={<TeamPage />} />
-            </Route>
-
-            <Route element={<AdminRoute />}>
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminOverviewPage />} />
-                <Route path="payroll" element={<PayrollAnalyticsPage />} />
-                <Route path="attendance" element={<AttendanceLogPage />} />
-                <Route path="presence" element={<PresencePage />} />
-                <Route path="reports" element={<ReportsPage />} />
+              <Route element={<PrivateRoute />}>
+                <Route path="/" element={<RootRoute />} />
+                <Route path="/team" element={<TeamPage />} />
               </Route>
-            </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </Router>
-    </AuthProvider>
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminOverviewPage />} />
+                  <Route path="payroll" element={<PayrollAnalyticsPage />} />
+                  <Route path="attendance" element={<AttendanceLogPage />} />
+                  <Route path="presence" element={<PresencePage />} />
+                  <Route path="reports" element={<ReportsPage />} />
+                </Route>
+              </Route>
+
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
